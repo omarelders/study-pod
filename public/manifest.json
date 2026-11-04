@@ -1,0 +1,9 @@
+{
+  "name": "StudyPod — Study Together",
+  "short_name": "StudyPod",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#DDECE6",
+  "theme_color": "#DDECE6",
+  "description": "2-Person Study Accountability & Focus Tracker"
+}

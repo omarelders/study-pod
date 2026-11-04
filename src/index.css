@@ -1,0 +1,472 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ios-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --ios-spring-bounce: cubic-bezier(0.34, 1.48, 0.64, 1);
+    --ios-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+    --ios-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Rounded', 'SF Pro Text', 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: #DDF0E8;
+    color: #0F1A24;
+    overscroll-behavior-y: none;
+  }
+}
+
+/* ==========================================================================
+   iOS 26 "Liquid Glass" (Solarium) Optical Material System + Motion Physics
+   ========================================================================== */
+
+/* 1. Living Atmospheric Canvas Behind the Glass */
+.liquid-canvas-bg {
+  background-color: #DFEFE9;
+  background-image:
+    radial-gradient(60% 42% at 50% 6%, rgba(168, 240, 214, 0.72) 0%, rgba(168, 240, 214, 0) 100%),
+    radial-gradient(48% 38% at 15% 32%, rgba(0, 196, 114, 0.16) 0%, rgba(0, 196, 114, 0) 100%),
+    radial-gradient(50% 40% at 86% 36%, rgba(0, 172, 238, 0.17) 0%, rgba(0, 172, 238, 0) 100%),
+    radial-gradient(55% 45% at 22% 78%, rgba(0, 196, 114, 0.13) 0%, rgba(0, 196, 114, 0) 100%),
+    radial-gradient(55% 45% at 82% 82%, rgba(0, 172, 238, 0.14) 0%, rgba(0, 172, 238, 0) 100%),
+    linear-gradient(180deg, #D0E9DF 0%, #E1EFEA 48%, #EAF3F0 100%);
+  background-attachment: fixed;
+}
+
+/* 2. Primary Liquid Glass Card (Sculpted Optical Slab + Specular Sheen Sweep) */
+.liquid-glass-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.68) 0%,
+    rgba(255, 255, 255, 0.42) 48%,
+    rgba(255, 255, 255, 0.58) 100%
+  );
+  backdrop-filter: blur(30px) saturate(210%) brightness(1.03);
+  -webkit-backdrop-filter: blur(30px) saturate(210%) brightness(1.03);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 16px 38px -10px rgba(10, 40, 32, 0.085),
+    0 4px 12px -2px rgba(10, 40, 32, 0.04),
+    0 0 0 0.5px rgba(255, 255, 255, 0.65),
+    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.98),
+    inset 1.5px 0 1.5px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -3px 8px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -1px 1.5px 0 rgba(20, 70, 58, 0.07);
+  transition:
+    transform 0.34s var(--ios-spring-bounce),
+    box-shadow 0.28s var(--ios-emphasized),
+    background 0.28s var(--ios-standard);
+  will-change: transform;
+}
+
+/* Static curved diagonal specular lens reflection */
+.liquid-glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    162deg,
+    rgba(255, 255, 255, 0.56) 0%,
+    rgba(255, 255, 255, 0.14) 34%,
+    rgba(255, 255, 255, 0) 56%
+  );
+  pointer-events: none;
+}
+
+/* Interactive iOS 26 Specular Light Glint that glides across the glass on hover */
+.liquid-glass-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 65%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(24deg) translate3d(0, 0, 0);
+  transition: transform 0.68s var(--ios-emphasized);
+  pointer-events: none;
+}
+
+.liquid-glass-card:hover::after {
+  transform: rotate(24deg) translate3d(380%, 0, 0);
+}
+
+.liquid-glass-card:hover {
+  transform: translate3d(0, -2px, 0) scale(1.006);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.76) 0%,
+    rgba(255, 255, 255, 0.50) 48%,
+    rgba(255, 255, 255, 0.66) 100%
+  );
+  box-shadow:
+    0 22px 46px -10px rgba(10, 40, 32, 0.12),
+    0 6px 16px -2px rgba(10, 40, 32, 0.05),
+    0 0 0 0.5px rgba(255, 255, 255, 0.85),
+    inset 0 2px 2px 0 #FFFFFF,
+    inset 1.5px 0 1.5px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -3px 10px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 1.5px 0 rgba(20, 70, 58, 0.06);
+}
+
+.liquid-glass-card:active {
+  transform: translate3d(0, 0, 0) scale(0.974);
+  transition-duration: 0.12s;
+}
+
+/* 3. Liquid Glass Pill / Capsule */
+.liquid-glass-pill {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.74) 0%,
+    rgba(255, 255, 255, 0.44) 100%
+  );
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 6px 18px -4px rgba(12, 38, 30, 0.08),
+    0 1px 3px rgba(12, 38, 30, 0.04),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -1.5px 3px 0 rgba(255, 255, 255, 0.55);
+  transition:
+    transform 0.28s var(--ios-spring-bounce),
+    box-shadow 0.22s var(--ios-standard),
+    background 0.22s var(--ios-standard);
+}
+
+.liquid-glass-pill:hover {
+  transform: translate3d(0, -1px, 0) scale(1.02);
+}
+
+.liquid-glass-pill:active {
+  transform: scale(0.93);
+  transition-duration: 0.1s;
+}
+
+/* Warm Amber-Tinted Liquid Glass Pill for "87% YESTERDAY" */
+.liquid-glass-amber-pill {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(253, 245, 218, 0.86) 0%,
+    rgba(243, 230, 190, 0.64) 100%
+  );
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid rgba(255, 252, 240, 0.92);
+  box-shadow:
+    0 8px 20px -4px rgba(180, 130, 30, 0.12),
+    0 1px 3px rgba(140, 100, 20, 0.06),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -1.5px 4px 0 rgba(255, 248, 220, 0.7);
+  transition: transform 0.28s var(--ios-spring-bounce), box-shadow 0.22s ease;
+}
+
+.liquid-glass-amber-pill:hover {
+  transform: translate3d(0, -1px, 0) scale(1.03);
+}
+
+.liquid-glass-amber-pill:active {
+  transform: scale(0.94);
+  transition-duration: 0.1s;
+}
+
+/* 4. iOS 26 Floating Liquid Glass Tab Bar */
+.liquid-glass-tabbar {
+  position: relative;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.64) 0%,
+    rgba(255, 255, 255, 0.36) 52%,
+    rgba(255, 255, 255, 0.54) 100%
+  );
+  backdrop-filter: blur(36px) saturate(220%) brightness(1.04);
+  -webkit-backdrop-filter: blur(36px) saturate(220%) brightness(1.04);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 18px 44px -8px rgba(8, 34, 26, 0.14),
+    0 4px 14px -2px rgba(8, 34, 26, 0.06),
+    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -2.5px 8px 0 rgba(255, 255, 255, 0.68),
+    inset 0 -1px 1px 0 rgba(0, 184, 107, 0.12);
+}
+
+/* 3D Sliding Active Tab Droplet inside the Liquid Glass Tab Bar */
+.liquid-glass-tab-active {
+  background: radial-gradient(
+      85% 95% at 50% 80%,
+      rgba(0, 200, 117, 0.26) 0%,
+      rgba(0, 200, 117, 0.05) 70%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.86) 0%,
+      rgba(235, 252, 244, 0.58) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 6px 18px -2px rgba(0, 175, 102, 0.2),
+    inset 0 1.5px 1px 0 #FFFFFF,
+    inset 0 -1.5px 4px 0 rgba(0, 184, 107, 0.16);
+}
+
+/* 5. 3D Emerald Liquid Glass Sphere (Floating Action Button) */
+.liquid-glass-emerald-orb {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(85% 85% at 28% 22%, rgba(130, 255, 198, 0.92) 0%, rgba(130, 255, 198, 0) 52%),
+    linear-gradient(155deg, #10D482 0%, #00B86B 54%, #008F51 100%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 14px 30px -5px rgba(0, 175, 100, 0.52),
+    0 4px 10px -1px rgba(0, 140, 80, 0.28),
+    inset 0 2.5px 2px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -3px 6px 0 rgba(0, 85, 45, 0.35);
+  transition: transform 0.32s var(--ios-spring-bounce), box-shadow 0.25s ease;
+}
+
+.liquid-glass-emerald-orb:hover {
+  transform: translate3d(0, -2px, 0) scale(1.05);
+  box-shadow:
+    0 18px 36px -4px rgba(0, 185, 105, 0.62),
+    0 6px 14px -1px rgba(0, 140, 80, 0.32),
+    inset 0 2.5px 2px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -3px 6px 0 rgba(0, 85, 45, 0.35);
+}
+
+.liquid-glass-emerald-orb:active {
+  transform: scale(0.91);
+  transition-duration: 0.1s;
+}
+
+.liquid-glass-emerald-orb::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 14%;
+  width: 72%;
+  height: 42%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.58) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  pointer-events: none;
+}
+
+/* 6. Liquid Glass Modal / Sheet Surface */
+.liquid-glass-sheet {
+  background: linear-gradient(
+    160deg,
+    rgba(246, 252, 249, 0.88) 0%,
+    rgba(234, 245, 240, 0.78) 100%
+  );
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 -16px 56px -8px rgba(8, 32, 25, 0.22),
+    0 20px 60px -10px rgba(8, 32, 25, 0.18),
+    inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.98);
+  animation: iosSheetPresent 0.44s var(--ios-spring) both;
+}
+
+/* 7. Recessed Frosted Glass Slot (Unfilled bars & tracks) */
+.liquid-glass-slot {
+  box-shadow:
+    inset 0 1.5px 2.5px rgba(12, 42, 34, 0.08),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.75);
+}
+
+.ios-press {
+  transition: transform 0.26s var(--ios-spring-bounce), opacity 0.18s ease;
+}
+.ios-press:active {
+  transform: scale(0.94);
+  transition-duration: 0.1s;
+}
+
+/* ==========================================================================
+   iOS 26 Keyframe Choreography & Staggered Reveal System
+   ========================================================================== */
+
+@keyframes iosPageEnter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes iosCardCascade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.968);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes iosSheetPresent {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 42px, 0) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes iosBackdropPresent {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes iosDotSpringIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.25);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes iosSlantBarRise {
+  0% {
+    opacity: 0;
+    transform: skewX(-15deg) scaleY(0.25);
+  }
+  72% {
+    opacity: 1;
+    transform: skewX(-15deg) scaleY(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: skewX(-15deg) scaleY(1);
+  }
+}
+
+@keyframes iosMascotSpring {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.45);
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes iosSegmentDraw {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes iosPopBounce {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: iosPageEnter 0.42s var(--ios-emphasized) both;
+}
+
+.animate-backdrop {
+  animation: iosBackdropPresent 0.26s var(--ios-standard) both;
+}
+
+.ios-stagger-card {
+  animation: iosCardCascade 0.52s var(--ios-emphasized) both;
+  animation-delay: calc(var(--stagger, 0) * 52ms);
+}
+
+.ios-dot-bloom {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: iosDotSpringIn 0.54s var(--ios-spring-bounce) both;
+  animation-delay: calc(var(--dot-row, 0) * 44ms);
+}
+
+.ios-bar-wave {
+  transform-origin: bottom center;
+  animation: iosSlantBarRise 0.52s var(--ios-spring-bounce) both;
+  animation-delay: calc(var(--bar-idx, 0) * 38ms);
+}
+
+.ios-mascot-entrance {
+  animation: iosMascotSpring 0.62s var(--ios-spring-bounce) 0.12s both;
+}
+
+.ios-seg-bloom {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: iosSegmentDraw 0.46s var(--ios-spring-bounce) both;
+  animation-delay: calc(var(--seg-idx, 0) * 45ms);
+}
+
+.ios-pop-once {
+  animation: iosPopBounce 0.38s var(--ios-spring-bounce);
+}
+
+/* ==========================================================================
+   Reduced Motion Compliance (Non-Negotiable WCAG / Apple Accessibility Gate)
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

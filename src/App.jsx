@@ -1,0 +1,488 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Users,
+  BarChart2,
+  User,
+  ClipboardCheck,
+  Flame,
+  Menu,
+} from 'lucide-react';
+import {
+  createDefaultState,
+  createBlankOnboardingState,
+  computePodMetrics,
+} from './data/studyData.js';
+import {
+  syncPodStateToCloud,
+  fetchPodStateFromCloud,
+} from './data/supabaseSync.js';
+import HeroGauge from './components/HeroGauge.jsx';
+import StudyBentoGrid from './components/StudyBentoGrid.jsx';
+import InsightsView from './components/InsightsView.jsx';
+import QuickLogAndTimerModal from './components/QuickLogAndTimerModal.jsx';
+import RollingNumber from './components/RollingNumber.jsx';
+import {
+  PodPairingModal,
+  SettingsAndOnboardingView,
+} from './components/PodPairingAndSettings.jsx';
+
+const STORAGE_KEY = 'studypod_state_v1';
+
+export default function App() {
+  const [state, setState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.goals)) return parsed;
+      }
+    } catch {}
+    return createDefaultState();
+  });
+
+  const [activeTab, setActiveTab] = useState('together'); // 'together' | 'insights' | 'you' | 'onboarding'
+  const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [isPairingOpen, setIsPairingOpen] = useState(false);
+
+  const commitState = useCallback((updater, syncToServer = true) => {
+    setState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      if (syncToServer && next?.podCode) {
+        syncPodStateToCloud(next.podCode, next);
+      }
+      return next;
+    });
+  }, []);
+
+  // Connect to live Server-Sent Events (SSE) stream for real-time 2-device Pod sync
+  useEffect(() => {
+    const code = state.podCode || 'ZAU8PP';
+    let es;
+    try {
+      es = new EventSource(`/api/pods/${encodeURIComponent(code)}/events`);
+      es.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload?.state && Array.isArray(payload.state.goals)) {
+            setState((prev) => {
+              const merged = {
+                ...payload.state,
+                activeLogger:
+                  prev.activeLogger || payload.state.activeLogger || 'user1',
+              };
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
+          }
+        } catch {}
+      };
+    } catch {}
+    return () => {
+      if (es) es.close();
+    };
+  }, [state.podCode]);
+
+  // Live 1-second Pomodoro / Focus Timer tick
+  useEffect(() => {
+    const u1Running = state.user1?.studyingNow;
+    const u2Running = state.user2?.studyingNow;
+    if (!u1Running && !u2Running) return;
+
+    const timer = setInterval(() => {
+      commitState((prev) => {
+        const next = structuredClone(prev);
+        for (const uKey of ['user1', 'user2']) {
+          if (next[uKey]?.studyingNow) {
+            const rem = (next[uKey].timerRemainingSec ?? 1500) - 1;
+            if (rem <= 0) {
+              next[uKey].studyingNow = false;
+              next[uKey].timerRemainingSec = 1500;
+              next.goals = next.goals.map((g) =>
+                g.id === 'study-hours'
+                  ? { ...g, [uKey]: (g[uKey] || 0) + 25 }
+                  : g
+              );
+            } else {
+              next[uKey].timerRemainingSec = rem;
+            }
+          }
+        }
+        return next;
+      }, false);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [state.user1?.studyingNow, state.user2?.studyingNow, commitState]);
+
+  const metrics = computePodMetrics(state);
+
+  const handleToggleYesterday = () => {
+    commitState((prev) => ({
+      ...prev,
+      selectedDayView:
+        prev.selectedDayView === 'yesterday' ? 'today' : 'yesterday',
+    }));
+  };
+
+  const handleSwitchActiveLogger = (userKey) => {
+    commitState(
+      (prev) => ({
+        ...prev,
+        activeLogger: userKey,
+      }),
+      false
+    );
+  };
+
+  const handleUpdateGoalValue = (goalId, newValue, targetUserKey) => {
+    const uKey = targetUserKey || state.activeLogger || 'user1';
+    commitState((prev) => ({
+      ...prev,
+      selectedDayView: 'today',
+      goals: prev.goals.map((g) =>
+        g.id === goalId ? { ...g, [uKey]: Math.max(0, newValue) } : g
+      ),
+    }));
+  };
+
+  const handleQuickStep = (goalId, delta, targetUserKey) => {
+    const uKey = targetUserKey || state.activeLogger || 'user1';
+    commitState((prev) => ({
+      ...prev,
+      selectedDayView: 'today',
+      goals: prev.goals.map((g) => {
+        if (g.id !== goalId) return g;
+        const step = delta ?? g.step ?? 1;
+        return { ...g, [uKey]: Math.max(0, (g[uKey] || 0) + step) };
+      }),
+    }));
+  };
+
+  const handleSelectGoal = (goalId) => {
+    setSelectedGoalId(goalId);
+    setIsQuickLogOpen(true);
+  };
+
+  const handleToggleTimer = (userKey, durationSec, subjectName) => {
+    const uKey = userKey || state.activeLogger || 'user1';
+    commitState((prev) => {
+      const currentlyRunning = prev[uKey]?.studyingNow;
+      return {
+        ...prev,
+        [uKey]: {
+          ...prev[uKey],
+          studyingNow: !currentlyRunning,
+          timerRemainingSec:
+            durationSec ?? prev[uKey]?.timerRemainingSec ?? 1500,
+          studySubject:
+            subjectName || prev[uKey]?.studySubject || 'Deep Study',
+        },
+      };
+    });
+  };
+
+  const handleCompletePomodoro = (minutes = 25, userKey) => {
+    const uKey = userKey || state.activeLogger || 'user1';
+    commitState((prev) => ({
+      ...prev,
+      [uKey]: {
+        ...prev[uKey],
+        studyingNow: false,
+        timerRemainingSec: 1500,
+      },
+      goals: prev.goals.map((g) =>
+        g.id === 'study-hours'
+          ? { ...g, [uKey]: (g[uKey] || 0) + minutes }
+          : g
+      ),
+    }));
+  };
+
+  const handleCreateNewPod = async () => {
+    try {
+      const res = await fetch('/api/pods/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.code) {
+          commitState(
+            (prev) => ({ ...prev, podCode: data.code, paired: true }),
+            false
+          );
+          return data.code;
+        }
+      }
+    } catch {}
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let randomCode = '';
+    for (let i = 0; i < 6; i++) {
+      randomCode += chars[Math.floor(Math.random() * chars.length)];
+    }
+    commitState((prev) => ({ ...prev, podCode: randomCode, paired: true }));
+    return randomCode;
+  };
+
+  const handleJoinPod = async (inviteCode) => {
+    const cleanCode = String(inviteCode || '')
+      .trim()
+      .toUpperCase();
+    if (!cleanCode) return;
+    const remoteState = await fetchPodStateFromCloud(cleanCode);
+    if (remoteState) {
+      commitState(
+        { ...remoteState, podCode: cleanCode, paired: true },
+        true
+      );
+      return;
+    }
+    commitState((prev) => ({ ...prev, podCode: cleanCode, paired: true }));
+  };
+
+  const handleAcceptInvite = () => {
+    commitState((prev) => ({ ...prev, paired: true }));
+    setIsPairingOpen(false);
+  };
+
+  const handleResetDemo = () => {
+    const demo = createDefaultState();
+    commitState(demo, true);
+    setActiveTab('together');
+  };
+
+  const handleStartFreshOnboarding = () => {
+    const blank = createBlankOnboardingState();
+    commitState(blank, true);
+    setActiveTab('onboarding');
+  };
+
+  const anyStudyingNow = state.user1?.studyingNow || state.user2?.studyingNow;
+  const activeColor =
+    state.activeLogger === 'user2'
+      ? state.user2?.color || '#00A8E8'
+      : state.user1?.color || '#00B86B';
+
+  return (
+    <div className="min-h-dvh w-full select-none flex flex-col liquid-canvas-bg relative overflow-x-hidden">
+      {/* Native iOS Top Navigation Bar (Seamless Liquid Glass Controls) */}
+      {activeTab !== 'onboarding' && (
+        <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-transparent">
+          <div className="max-w-[760px] mx-auto px-5 sm:px-8 pt-3.5 pb-1 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              {/* 3D Glossy Liquid Glass User Orb */}
+              <button
+                onClick={() =>
+                  handleSwitchActiveLogger(
+                    state.activeLogger === 'user1' ? 'user2' : 'user1'
+                  )
+                }
+                style={{
+                  backgroundColor: activeColor,
+                  boxShadow: `0 6px 16px -3px ${activeColor}66, inset 0 2px 1.5px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+                }}
+                className="relative w-[30px] h-[30px] rounded-full border border-white/60 flex items-center justify-center text-white text-[12px] font-extrabold ios-press cursor-pointer"
+                title={`Logging as ${
+                  state.activeLogger === 'user2'
+                    ? state.user2?.name
+                    : state.user1?.name
+                } — Tap to switch`}
+              >
+                <span className="pointer-events-none absolute top-[2px] left-[22%] w-[56%] h-[36%] rounded-full bg-gradient-to-b from-white/60 to-transparent" />
+              </button>
+
+              {anyStudyingNow && (
+                <button
+                  onClick={() => setIsQuickLogOpen(true)}
+                  className="liquid-glass-pill pl-2.5 pr-3 py-1 rounded-full text-[11.5px] font-bold text-[#008A50] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#00C472] animate-pulse shadow-[0_0_8px_#00C472]" />
+                  <span className="tabular-nums">
+                    {Math.floor(
+                      ((state.user1?.studyingNow
+                        ? state.user1.timerRemainingSec
+                        : state.user2.timerRemainingSec) || 1500) / 60
+                    )}
+                    m Focus
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              {/* Liquid Glass Streak Capsule */}
+              <button
+                onClick={() => setActiveTab('insights')}
+                className="liquid-glass-pill flex items-center gap-1.5 px-3 py-1 rounded-full cursor-pointer"
+                title="Current Study Pod Streak"
+              >
+                <Flame className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B] drop-shadow-[0_2px_4px_rgba(245,158,11,0.35)]" />
+                <RollingNumber
+                  value={state.streak}
+                  className="text-[13.5px] font-extrabold text-[#364943]"
+                />
+              </button>
+
+              {/* Liquid Glass Menu Squircle */}
+              <button
+                onClick={() =>
+                  setActiveTab(activeTab === 'you' ? 'together' : 'you')
+                }
+                className="liquid-glass-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
+                title="Pod Settings"
+              >
+                <Menu className="w-[16px] h-[16px] stroke-[2.3]" />
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Main Content Area with Keyed iOS 26 View Transition */}
+      <main className="flex-1 w-full max-w-[760px] mx-auto sm:px-4 pb-32">
+        <div key={activeTab} className="animate-fadeIn">
+          {activeTab === 'together' && (
+            <>
+              <HeroGauge
+                state={state}
+                metrics={metrics}
+                onToggleYesterday={handleToggleYesterday}
+                onOpenPairing={() => setIsPairingOpen(true)}
+              />
+              <StudyBentoGrid
+                state={state}
+                metrics={metrics}
+                onSelectGoal={handleSelectGoal}
+                onQuickStep={handleQuickStep}
+                onSwitchActiveLogger={handleSwitchActiveLogger}
+                onOpenTimer={() => {
+                  setSelectedGoalId('study-hours');
+                  setIsQuickLogOpen(true);
+                }}
+              />
+            </>
+          )}
+
+          {activeTab === 'insights' && (
+            <InsightsView state={state} metrics={metrics} />
+          )}
+
+          {(activeTab === 'you' || activeTab === 'onboarding') && (
+            <SettingsAndOnboardingView
+              state={state}
+              mode={activeTab === 'onboarding' ? 'onboarding' : 'settings'}
+              onUpdateState={(next) => commitState(next, true)}
+              onResetDemo={handleResetDemo}
+              onStartFreshOnboarding={handleStartFreshOnboarding}
+              onOpenPairing={() => setIsPairingOpen(true)}
+              onCloseOnboarding={() => setActiveTab('together')}
+            />
+          )}
+        </div>
+      </main>
+
+      {/* iOS 26 Floating Liquid Glass Tab Bar + Physical Sliding Droplet + 3D Emerald Sphere */}
+      {activeTab !== 'onboarding' && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none pb-5 pt-3 px-5 bg-gradient-to-t from-[#E5F1EC]/85 via-[#E5F1EC]/30 to-transparent">
+          <div className="max-w-[620px] mx-auto flex items-center justify-between gap-3.5">
+            {/* iOS 26 Liquid Glass Capsule Tab Bar with Sliding 3D Droplet */}
+            <nav className="pointer-events-auto relative liquid-glass-tabbar rounded-full p-1.5 grid grid-cols-3 items-center flex-1 max-w-[460px]">
+              {/* Physical Sliding 3D Liquid Glass Droplet Indicator */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 w-[calc((100%-12px)/3)] rounded-full liquid-glass-tab-active transition-transform duration-450"
+                style={{
+                  transform: `translate3d(${
+                    activeTab === 'insights'
+                      ? '100%'
+                      : activeTab === 'you'
+                        ? '200%'
+                        : '0%'
+                  }, 0, 0)`,
+                  transitionTimingFunction: 'cubic-bezier(0.34, 1.42, 0.64, 1)',
+                }}
+              />
+
+              {[
+                { id: 'together', label: 'Together', Icon: Users },
+                { id: 'insights', label: 'Insights', Icon: BarChart2 },
+                {
+                  id: 'you',
+                  label: state.paired ? 'You' : 'Your partner',
+                  Icon: User,
+                },
+              ].map(({ id, label, Icon }) => {
+                const isActive = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className="relative z-10 py-1.5 rounded-full flex flex-col items-center justify-center gap-0.5 ios-press cursor-pointer transition-colors duration-250"
+                  >
+                    <Icon
+                      className={`w-[19px] h-[19px] transition-all duration-300 ${
+                        isActive
+                          ? 'text-[#009A58] stroke-[2.4] -translate-y-[0.5px] scale-105'
+                          : 'text-[#5C7069] stroke-[2]'
+                      }`}
+                    />
+                    <span
+                      className={`text-[10.5px] tracking-[-0.01em] transition-colors duration-300 ${
+                        isActive
+                          ? 'font-bold text-[#009A58]'
+                          : 'font-semibold text-[#5C7069]'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* 3D Emerald Liquid Glass Sphere Action Button */}
+            <button
+              onClick={() => {
+                setSelectedGoalId(null);
+                setIsQuickLogOpen(true);
+              }}
+              className="pointer-events-auto w-[56px] h-[56px] rounded-full liquid-glass-emerald-orb text-white flex items-center justify-center ios-press cursor-pointer shrink-0"
+              title="Log Study Progress & Focus Timer"
+            >
+              <ClipboardCheck className="relative z-10 w-[25px] h-[25px] stroke-[2.3] drop-shadow-[0_1px_2px_rgba(0,80,45,0.35)]" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Log & Pomodoro Focus Timer Sheet */}
+      <QuickLogAndTimerModal
+        isOpen={isQuickLogOpen}
+        onClose={() => setIsQuickLogOpen(false)}
+        initialGoalId={selectedGoalId}
+        state={state}
+        onUpdateGoalValue={handleUpdateGoalValue}
+        onSwitchActiveLogger={handleSwitchActiveLogger}
+        onToggleTimer={handleToggleTimer}
+        onCompletePomodoro={handleCompletePomodoro}
+      />
+
+      {/* 6-Character Pod Pairing Modal */}
+      <PodPairingModal
+        isOpen={isPairingOpen}
+        onClose={() => setIsPairingOpen(false)}
+        state={state}
+        onCreateNewPod={handleCreateNewPod}
+        onJoinPod={handleJoinPod}
+        onAcceptInvite={handleAcceptInvite}
+      />
+    </div>
+  );
+}

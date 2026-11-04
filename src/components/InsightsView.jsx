@@ -1,0 +1,786 @@
+import React, { useState } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Footprints,
+  Feather,
+  Droplet,
+  BookOpen,
+  Dumbbell,
+  Pill,
+  Award,
+  Layers,
+  Sparkles,
+  Star,
+  Flame,
+  PartyPopper,
+} from 'lucide-react';
+import { WEEKLY_HISTORY_DEFAULT, formatGoalValue } from '../data/studyData.js';
+import { RollingNumber } from './RollingNumber.jsx';
+
+const GOAL_ICON_MAP = {
+  moon: { Icon: Moon, color: '#6E8597' },
+  footprints: { Icon: Footprints, color: '#E05A47' },
+  feather: { Icon: Feather, color: '#D99B26' },
+  droplet: { Icon: Droplet, color: '#1EA4F2' },
+  book: { Icon: BookOpen, color: '#EB5769' },
+  dumbbell: { Icon: Dumbbell, color: '#5E7185' },
+  pill: { Icon: Pill, color: '#E85C90' },
+  piggy: { Icon: Award, color: '#EC4899' },
+  scale: { Icon: Layers, color: '#0EA5E9' },
+};
+
+const GOAL_WEEKLY_PATTERNS = {
+  'study-hours': [
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: false },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+  ],
+  flashcards: [
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+  ],
+  reading: [
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: false },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+  ],
+  lectures: [
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: false },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+  ],
+  'active-recall': [
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: false },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+  ],
+  'problem-sets': [
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: false, u2: true },
+    { u1: true, u2: true },
+  ],
+  'daily-review': [
+    { u1: true, u2: true },
+    { u1: true, u2: false },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: true },
+    { u1: true, u2: false },
+    { u1: true, u2: true },
+  ],
+};
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return {
+    x: cx + r * Math.cos(rad),
+    y: cy - r * Math.sin(rad),
+  };
+}
+
+function describeArcSegment(cx, cy, r, startAngleDeg, endAngleDeg) {
+  const start = polarToCartesian(cx, cy, r, startAngleDeg);
+  const end = polarToCartesian(cx, cy, r, endAngleDeg);
+  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 0 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+}
+
+/**
+ * 3D Glossy Green Mascot Orb (Matches 00:58 & 01:00 in the video)
+ */
+function MascotOrb({ size = 34 }) {
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="relative rounded-full shrink-0 flex items-center justify-center shadow-[0_6px_16px_-2px_rgba(0,196,90,0.45),inset_0_2px_2px_rgba(255,255,255,0.75)]"
+    >
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background:
+            'radial-gradient(85% 85% at 32% 24%, #52FF9E 0%, #00C853 52%, #009940 100%)',
+        }}
+      />
+      {/* Top glass lens highlight */}
+      <div className="absolute top-[2px] left-[20%] w-[60%] h-[34%] rounded-full bg-gradient-to-b from-white/55 to-transparent pointer-events-none" />
+      {/* Subtle friendly eyes & smile */}
+      <svg
+        width={size * 0.56}
+        height={size * 0.42}
+        viewBox="0 0 20 14"
+        className="relative z-10 opacity-75"
+      >
+        <circle cx="5.5" cy="4.5" r="1.35" fill="#064E26" />
+        <circle cx="14.5" cy="4.5" r="1.35" fill="#064E26" />
+        <path
+          d="M 6.5 9.2 Q 10 12 13.5 9.2"
+          fill="none"
+          stroke="#064E26"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Split Semicircle Indicator (Matches 01:00 - 01:02 in the video)
+ * Left half = User 1, Right half = User 2, separated by a crisp gap
+ */
+function SplitHalfCircle({
+  u1,
+  u2,
+  u1Color = '#00B86B',
+  u2Color = '#00A8E8',
+  size = 30,
+  hideWhenEmpty = false,
+}) {
+  const r = size / 2;
+  const pad = 1.2;
+  const gap = size >= 24 ? 1.3 : 1.0;
+
+  if (hideWhenEmpty && !u1 && !u2) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="rounded-full bg-black/[0.04]"
+      />
+    );
+  }
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="shrink-0 overflow-visible"
+    >
+      {/* Left Half-Moon (User 1) */}
+      <path
+        d={`M ${r - gap} ${pad} A ${r - pad} ${r - pad} 0 0 0 ${r - gap} ${size - pad} Z`}
+        fill={u1 ? u1Color : 'rgba(15, 28, 24, 0.06)'}
+      />
+      {/* Right Half-Moon (User 2) */}
+      <path
+        d={`M ${r + gap} ${pad} A ${r - pad} ${r - pad} 0 0 1 ${r + gap} ${size - pad} Z`}
+        fill={u2 ? u2Color : 'rgba(15, 28, 24, 0.06)'}
+      />
+    </svg>
+  );
+}
+
+/**
+ * 10-Segment 240° Horseshoe Pod Health Gauge (Exact replica of 00:58 - 00:59 in video)
+ */
+function PodHealthHorseshoeGauge({ podHealth = 86 }) {
+  const totalSegments = 10;
+  const clampedHealth = Math.max(0, Math.min(100, podHealth));
+  // At 86%, 9 of the 10 segments are lit
+  const activeSegments =
+    clampedHealth === 86
+      ? 9
+      : Math.max(1, Math.round((clampedHealth / 100) * totalSegments));
+
+  // 240° horseshoe sweep: from 210° (bottom-left) clockwise through 90° (top) to -30° (bottom-right)
+  const totalSpan = 240;
+  const gapDeg = 9.5;
+  const segSpan = (totalSpan - gapDeg * (totalSegments - 1)) / totalSegments;
+
+  const cx = 130;
+  const cy = 114;
+  const radius = 84;
+
+  const segments = Array.from({ length: totalSegments }, (_, idx) => {
+    const startAngle = 210 - idx * (segSpan + gapDeg);
+    const endAngle = startAngle - segSpan;
+    const isFilled = idx < activeSegments;
+    return {
+      idx,
+      d: describeArcSegment(cx, cy, radius, startAngle, endAngle),
+      isFilled,
+    };
+  });
+
+  const statusText =
+    clampedHealth >= 75
+      ? 'THRIVING'
+      : clampedHealth >= 50
+        ? 'STEADY'
+        : 'WARMING UP';
+
+  return (
+    <div className="relative flex flex-col items-center pt-1 pb-2">
+      {/* Subtle Ambient Emerald Aura Behind Horseshoe */}
+      <div
+        className="pointer-events-none absolute top-6 w-[220px] h-[160px] rounded-full blur-2xl opacity-45"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(0, 200, 95, 0.28) 0%, rgba(255,255,255,0) 72%)',
+        }}
+      />
+
+      {/* Top Label: POD HEALTH ⓘ */}
+      <div className="flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase mb-1">
+        <span>POD HEALTH</span>
+        <span className="w-3.5 h-3.5 rounded-full border border-[#96A7A0]/60 text-[8.5px] font-bold flex items-center justify-center text-[#84968F] leading-none">
+          i
+        </span>
+      </div>
+
+      {/* 240° Horseshoe SVG + Inner Mascot & 86 THRIVING */}
+      <div className="relative w-[260px] h-[200px] flex items-center justify-center">
+        <svg
+          width="260"
+          height="200"
+          viewBox="0 0 260 200"
+          className="overflow-visible"
+        >
+          <defs>
+            <linearGradient
+              id="horseshoeGreen"
+              gradientUnits="userSpaceOnUse"
+              x1="30"
+              y1="20"
+              x2="230"
+              y2="180"
+            >
+              <stop offset="0%" stopColor="#05D666" />
+              <stop offset="100%" stopColor="#00B24F" />
+            </linearGradient>
+            <filter
+              id="segGlow"
+              filterUnits="userSpaceOnUse"
+              x="0"
+              y="0"
+              width="260"
+              height="200"
+            >
+              <feDropShadow
+                dx="0"
+                dy="2"
+                stdDeviation="2.5"
+                floodColor="#00C458"
+                floodOpacity="0.32"
+              />
+            </filter>
+          </defs>
+
+          {segments.map((seg) => (
+            <path
+              key={seg.idx}
+              d={seg.d}
+              fill="none"
+              stroke={
+                seg.isFilled
+                  ? 'url(#horseshoeGreen)'
+                  : 'rgba(0, 184, 107, 0.14)'
+              }
+              filter={seg.isFilled ? 'url(#segGlow)' : undefined}
+              strokeWidth="10.5"
+              strokeLinecap="round"
+              style={{ '--seg-idx': seg.idx }}
+              className="ios-seg-bloom transition-all duration-500"
+            />
+          ))}
+        </svg>
+
+        {/* Center Stack Inside Horseshoe: Mascot Orb -> 86 -> THRIVING */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pt-5 pointer-events-none">
+          <div className="ios-mascot-entrance animate-float">
+            <MascotOrb size={34} />
+          </div>
+          <div className="mt-2 text-[58px] font-extrabold text-[#141E28] leading-[0.92] tracking-[-0.04em] tabular-nums drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
+            <RollingNumber value={clampedHealth} />
+          </div>
+          <div className="mt-2 text-[11px] font-extrabold tracking-[0.15em] text-[#00A859] uppercase">
+            {statusText}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Custom Golden Rising Sun SVG for the "YOUR WEEK" Card (Matches 00:59 in video)
+ */
+function RisingSunIllustration() {
+  return (
+    <div className="w-[54px] h-[44px] flex items-center justify-center shrink-0">
+      <svg width="52" height="40" viewBox="0 0 52 40" className="overflow-visible">
+        <defs>
+          <linearGradient id="sunDomeGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop offset="0%" stopColor="#FFE484" />
+            <stop offset="55%" stopColor="#F6B236" />
+            <stop offset="100%" stopColor="#E09119" />
+          </linearGradient>
+          <filter id="sunGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow
+              dx="0"
+              dy="2"
+              stdDeviation="4"
+              floodColor="#F5A623"
+              floodOpacity="0.38"
+            />
+          </filter>
+        </defs>
+        {/* Rising Sun Semi-Circle Dome */}
+        <path
+          d="M 8 27 A 18 18 0 0 1 44 27 Z"
+          fill="url(#sunDomeGrad)"
+          filter="url(#sunGlow)"
+        />
+        {/* Inner Specular Crescent on the Sun Dome */}
+        <path
+          d="M 13 24 A 13 13 0 0 1 39 24"
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.55)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        {/* Primary Horizon Line */}
+        <line
+          x1="4"
+          y1="30"
+          x2="48"
+          y2="30"
+          stroke="#DCA03A"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        {/* Secondary Shimmer Reflection Line */}
+        <line
+          x1="14"
+          y1="34.5"
+          x2="38"
+          y2="34.5"
+          stroke="#E5B869"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          opacity="0.7"
+        />
+      </svg>
+    </div>
+  );
+}
+
+export function InsightsView({ state, metrics }) {
+  const [showWeeklyDetail, setShowWeeklyDetail] = useState(false);
+
+  const u1Name = state?.user1?.name || 'Ced';
+  const u2Name = state?.user2?.name || 'Joe';
+  const u1Color = state?.user1?.color || '#00B86B';
+  const u2Color = state?.user2?.color || '#00A8E8';
+
+  const weeklyHistory =
+    state?.weeklyHistory && state.weeklyHistory.length === 7
+      ? state.weeklyHistory
+      : WEEKLY_HISTORY_DEFAULT;
+
+  const weeklySyncDays =
+    weeklyHistory.filter((d) => d.u1 && d.u2).length || 5;
+
+  const dailyGoals = (state?.goals || []).filter(
+    (g) => g.enabled && g.category === 'daily'
+  );
+
+  const u1Percent = metrics?.user1Percent ?? 48;
+  const u2Percent = metrics?.user2Percent ?? 54;
+
+  // =========================================================================
+  // VIEW 2: Weekly Sync Detail Recap Screen (Exact replica of 01:00 - 01:02)
+  // =========================================================================
+  if (showWeeklyDetail) {
+    return (
+      <div className="px-5 pt-1 pb-28 max-w-[560px] mx-auto animate-fadeIn">
+        {/* Clean Top-Left Back Button */}
+        <div className="flex items-center mb-1">
+          <button
+            type="button"
+            onClick={() => setShowWeeklyDetail(false)}
+            aria-label="Back to Insights"
+            className="w-9 h-9 -ml-1.5 rounded-full liquid-glass-pill flex items-center justify-center text-[#141E28] cursor-pointer"
+          >
+            <ChevronLeft className="w-5 h-5 stroke-[2.3]" />
+          </button>
+        </div>
+
+        {/* Hero Sync Number + Floating Mascot Orb */}
+        <div className="relative text-center mt-1 mb-6">
+          <div className="text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase">
+            YOU &amp; {u2Name.toUpperCase()} · AUG 17 – 23
+          </div>
+
+          <div className="relative inline-flex items-center justify-center mt-1">
+            <span className="text-[78px] font-extrabold text-[#141E28] leading-[0.9] tracking-[-0.045em] tabular-nums">
+              <RollingNumber value={weeklySyncDays} />
+            </span>
+            {/* Mascot Orb floating to upper-right of the 5 */}
+            <div className="absolute -right-14 top-1 ios-mascot-entrance animate-float">
+              <MascotOrb size={34} />
+            </div>
+          </div>
+
+          <div className="text-[20px] font-bold text-[#141E28] tracking-[-0.025em] mt-1.5">
+            days in sync this week
+          </div>
+          <p className="text-[12.5px] font-medium text-[#7A8B85] mt-0.5">
+            Both of you hit every shared goal that day.
+          </p>
+        </div>
+
+        {/* 7-Day Split Circles Row (Circles on top, M T W T F S S below) */}
+        <div className="grid grid-cols-7 gap-2 justify-items-center mb-7 px-2">
+          {weeklyHistory.map((item, idx) => {
+            const both = item.u1 && item.u2;
+            return (
+              <div
+                key={idx}
+                style={{ '--stagger': idx }}
+                className="flex flex-col items-center gap-2 ios-stagger-card"
+              >
+                <div className="h-[34px] flex items-center justify-center">
+                  {both ? (
+                    <SplitHalfCircle
+                      u1={true}
+                      u2={true}
+                      u1Color={u1Color}
+                      u2Color={u2Color}
+                      size={32}
+                    />
+                  ) : (
+                    <span className="w-[30px] h-[30px] rounded-full bg-black/[0.04] border border-white/50" />
+                  )}
+                </div>
+                <span
+                  className={`text-[11px] font-bold ${
+                    both ? 'text-[#141E28]' : 'text-[#8FA19A]'
+                  }`}
+                >
+                  {item.day}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* GOALS — Where you both showed up this week */}
+        <div
+          style={{ '--stagger': 3 }}
+          className="liquid-glass-card p-5 ios-stagger-card"
+        >
+          <div className="text-[10.5px] font-extrabold tracking-[0.14em] text-[#7A8B85] uppercase">
+            GOALS
+          </div>
+          <div className="text-[13px] text-[#6B7E77] font-medium mt-0.5 mb-4">
+            Where you both showed up this week
+          </div>
+
+          <div className="divide-y divide-black/[0.05]">
+            {dailyGoals.map((goal) => {
+              const iconMeta = GOAL_ICON_MAP[goal.icon] || {
+                Icon: Sparkles,
+                color: '#009E5C',
+              };
+              const IconComponent = iconMeta.Icon;
+              const pattern =
+                GOAL_WEEKLY_PATTERNS[goal.id] || weeklyHistory;
+              const goalSyncCount = pattern.filter((d) => d.u1 && d.u2).length;
+              const shortTitle =
+                goal.id === 'flashcards'
+                  ? 'Flashcards'
+                  : goal.id === 'active-recall'
+                    ? 'Recall'
+                    : goal.title;
+
+              return (
+                <div
+                  key={goal.id}
+                  className="py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-2"
+                >
+                  {/* Goal Icon + Name */}
+                  <div className="flex items-center gap-2.5 min-w-[110px]">
+                    <IconComponent
+                      className="w-4 h-4 shrink-0 stroke-[2.2]"
+                      style={{ color: iconMeta.color }}
+                    />
+                    <span className="text-[15px] font-bold text-[#141E28] tracking-[-0.02em] truncate">
+                      {shortTitle}
+                    </span>
+                  </div>
+
+                  {/* 7 Split Semicircle Indicators */}
+                  <div className="flex items-center gap-1.5">
+                    {pattern.map((d, i) => (
+                      <SplitHalfCircle
+                        key={i}
+                        u1={d.u1}
+                        u2={d.u2}
+                        u1Color={u1Color}
+                        u2Color={u2Color}
+                        size={19}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Right Sync Count */}
+                  <div className="w-6 text-right shrink-0">
+                    <span className="text-[21px] font-extrabold text-[#141E28] tracking-[-0.03em] tabular-nums">
+                      {goalSyncCount}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 1: Main Insights Screen (Exact replica of 00:58 - 00:59 in video)
+  // =========================================================================
+  return (
+    <div className="px-5 pt-2 pb-28 max-w-[580px] mx-auto animate-fadeIn">
+      {/* Top Header Row: Left "Insights", Right "Ced + Joe · together 12 days" */}
+      <div className="flex items-baseline justify-between mb-3">
+        <h1 className="text-[28px] font-extrabold text-[#141E28] tracking-[-0.035em] leading-none">
+          Insights
+        </h1>
+        <p className="text-[12.5px] font-semibold text-[#748680] tracking-[-0.01em] tabular-nums">
+          {u1Name} + {u2Name} · together {state?.daysTogether ?? 12} days
+        </p>
+      </div>
+
+      {/* Open Hero Section: 240° Horseshoe Pod Health Gauge + 3 Borderless Stat Columns */}
+      <div
+        style={{ '--stagger': 0 }}
+        className="liquid-glass-card px-5 pt-5 pb-6 mb-6 ios-stagger-card"
+      >
+        <PodHealthHorseshoeGauge podHealth={state?.podHealth ?? 86} />
+
+        {/* 3 Borderless Stat Columns (Matches 00:59 in video 1:1) */}
+        <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-white/60 text-center">
+          {/* Column 1: Best streak */}
+          <div className="flex flex-col items-center">
+            <div className="w-7 h-7 rounded-full bg-amber-400/15 flex items-center justify-center mb-1">
+              <Star className="w-4 h-4 text-[#F5A623] fill-[#F5A623]" />
+            </div>
+            <div className="text-[24px] font-extrabold text-[#00A859] leading-none tracking-[-0.03em] tabular-nums mt-0.5">
+              <RollingNumber value={state?.bestStreak ?? 18} />
+            </div>
+            <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
+              days
+            </div>
+            <div className="text-[12px] font-bold text-[#263330] mt-0.5 tracking-[-0.01em]">
+              Best streak
+            </div>
+          </div>
+
+          {/* Column 2: Days together */}
+          <div className="flex flex-col items-center">
+            <div className="w-7 h-7 rounded-full bg-indigo-500/12 flex items-center justify-center mb-1">
+              <PartyPopper className="w-4 h-4 text-[#4F46E5]" />
+            </div>
+            <div className="text-[24px] font-extrabold text-[#1E1B5E] leading-none tracking-[-0.03em] tabular-nums mt-0.5">
+              <RollingNumber value={state?.daysTogether ?? 12} />
+            </div>
+            <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
+              total days
+            </div>
+            <div className="text-[12px] font-bold text-[#263330] mt-0.5 tracking-[-0.01em]">
+              Days together
+            </div>
+          </div>
+
+          {/* Column 3: Current streak */}
+          <div className="flex flex-col items-center">
+            <div className="w-7 h-7 rounded-full bg-orange-500/15 flex items-center justify-center mb-1">
+              <Flame className="w-4 h-4 text-[#E04F16] fill-[#F59E0B]" />
+            </div>
+            <div className="text-[24px] font-extrabold text-[#9E2A14] leading-none tracking-[-0.03em] tabular-nums mt-0.5">
+              <RollingNumber value={state?.streak ?? 12} />
+            </div>
+            <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
+              days
+            </div>
+            <div className="text-[12px] font-bold text-[#263330] mt-0.5 tracking-[-0.01em]">
+              Current streak
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Section (Matches 00:59 in video: "Weekly" + "4 weeks ›" + Warm Golden Rising Sun Banner) */}
+      <div style={{ '--stagger': 1 }} className="mb-6 ios-stagger-card">
+        <div className="flex items-baseline justify-between mb-2.5 px-0.5">
+          <h2 className="text-[19px] font-bold tracking-[-0.025em] text-[#141E28]">
+            Weekly
+          </h2>
+          <button
+            type="button"
+            onClick={() => setShowWeeklyDetail(true)}
+            className="text-[12.5px] font-semibold text-[#7A8B85] hover:text-[#141E28] transition cursor-pointer"
+          >
+            4 weeks ›
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowWeeklyDetail(true)}
+          className="w-full text-left relative overflow-hidden rounded-[26px] p-5 flex items-center justify-between gap-4 ios-press cursor-pointer group"
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(255, 251, 238, 0.84) 0%, rgba(252, 239, 202, 0.68) 52%, rgba(247, 231, 186, 0.78) 100%)',
+            backdropFilter: 'blur(28px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(200%)',
+            border: '1px solid rgba(255, 252, 240, 0.92)',
+            boxShadow:
+              '0 14px 34px -8px rgba(180, 130, 30, 0.12), 0 4px 10px -2px rgba(160, 115, 20, 0.06), inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.98), inset 0 -2px 6px 0 rgba(255, 245, 215, 0.65)',
+          }}
+        >
+          {/* Subtle Warm Sunlight Glow */}
+          <div
+            className="pointer-events-none absolute -left-6 -bottom-6 w-32 h-24 rounded-full blur-2xl opacity-45"
+            style={{ backgroundColor: '#F5B027' }}
+          />
+
+          <div className="relative z-10 flex items-center gap-4">
+            <RisingSunIllustration />
+
+            <div>
+              <div className="text-[10px] font-extrabold tracking-[0.14em] text-[#B88624] uppercase">
+                YOUR WEEK
+              </div>
+              <div className="text-[20px] font-extrabold text-[#141E28] tracking-[-0.03em] leading-tight mt-0.5">
+                Aug 17 – 23
+              </div>
+              <div className="text-[12.5px] font-medium text-[#8C7A54] mt-0.5">
+                Tap to open recap · {weeklySyncDays} days in sync
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 w-8 h-8 rounded-full bg-white/55 border border-white/80 flex items-center justify-center text-[#A8791E] group-hover:translate-x-0.5 transition">
+            <ChevronRight className="w-4 h-4 stroke-[2.4]" />
+          </div>
+        </button>
+      </div>
+
+      {/* Individual Section (Matches bottom of 00:59 in video) */}
+      <div style={{ '--stagger': 2 }} className="ios-stagger-card">
+        <div className="flex items-baseline justify-between mb-2.5 px-0.5">
+          <h2 className="text-[19px] font-bold tracking-[-0.025em] text-[#141E28]">
+            Individual
+          </h2>
+          <span className="text-[12px] font-semibold text-[#7A8B85]">
+            Today&apos;s pace
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3.5">
+          {/* User 1 Individual Card */}
+          <div className="liquid-glass-card p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[15px] font-extrabold text-[#141E28] tracking-[-0.02em]">
+                {u1Name}
+              </span>
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{
+                  backgroundColor: u1Color,
+                  boxShadow: `0 0 8px ${u1Color}`,
+                }}
+              />
+            </div>
+
+            <div className="my-3">
+              <div className="text-[26px] font-extrabold tracking-[-0.035em] text-[#141E28] leading-none tabular-nums">
+                <RollingNumber value={`${u1Percent}%`} />
+              </div>
+              <div className="text-[11.5px] font-medium text-[#748680] mt-1">
+                {formatGoalValue(dailyGoals[0] || { displayFormat: 'hours-mins' }, dailyGoals[0]?.user1 ?? 360)} studied
+              </div>
+            </div>
+
+            <div className="w-full h-2 rounded-full bg-black/[0.06] overflow-hidden p-0.5 liquid-glass-slot">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  width: `${Math.max(12, u1Percent)}%`,
+                  backgroundColor: u1Color,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* User 2 Individual Card */}
+          <div className="liquid-glass-card p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[15px] font-extrabold text-[#141E28] tracking-[-0.02em]">
+                {u2Name}
+              </span>
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{
+                  backgroundColor: u2Color,
+                  boxShadow: `0 0 8px ${u2Color}`,
+                }}
+              />
+            </div>
+
+            <div className="my-3">
+              <div className="text-[26px] font-extrabold tracking-[-0.035em] text-[#141E28] leading-none tabular-nums">
+                <RollingNumber value={`${u2Percent}%`} />
+              </div>
+              <div className="text-[11.5px] font-medium text-[#748680] mt-1">
+                {formatGoalValue(dailyGoals[0] || { displayFormat: 'hours-mins' }, dailyGoals[0]?.user2 ?? 430)} studied
+              </div>
+            </div>
+
+            <div className="w-full h-2 rounded-full bg-black/[0.06] overflow-hidden p-0.5 liquid-glass-slot">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  width: `${Math.max(12, u2Percent)}%`,
+                  backgroundColor: u2Color,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default InsightsView;
