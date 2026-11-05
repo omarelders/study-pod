@@ -166,11 +166,57 @@ export const WEEKLY_HISTORY_DEFAULT = [
   { day: 'S', label: 'Sun', u1: true, u2: true },
 ];
 
+export function getTodayIsoDate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function getFormattedDayLabel(isYesterday = false) {
+  const d = new Date();
+  if (isYesterday) d.setDate(d.getDate() - 1);
+  const weekday = d
+    .toLocaleDateString('en-US', { weekday: 'short' })
+    .toUpperCase();
+  const month = d
+    .toLocaleDateString('en-US', { month: 'short' })
+    .toUpperCase();
+  const dayNum = d.getDate();
+  return `${weekday} · ${month} ${dayNum}`;
+}
+
+export function getCurrentWeekRangeLabel(uppercase = false) {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 (Sun) .. 6 (Sat)
+  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diffToMon);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+
+  const m1 = mon.toLocaleDateString('en-US', { month: 'short' });
+  const m2 = sun.toLocaleDateString('en-US', { month: 'short' });
+  const d1 = mon.getDate();
+  const d2 = sun.getDate();
+  const label = m1 === m2 ? `${m1} ${d1} – ${d2}` : `${m1} ${d1} – ${m2} ${d2}`;
+  return uppercase ? label.toUpperCase() : label;
+}
+
+export function getCurrentWeekdayIndexMondayFirst() {
+  const day = new Date().getDay(); // 0=Sun..6=Sat
+  return day === 0 ? 6 : day - 1; // 0=Mon..6=Sun
+}
+
 export function createDefaultState() {
   return {
     podCode: 'ZAU8PP',
     paired: true,
-    relationship: 'Study Partner',
+    isDemoSnapshot: true,
+    lastActiveDate: getTodayIsoDate(),
+    updatedAt: Date.now(),
+    relationship: 'My Study Partner',
     activeLogger: 'user1', // 'user1' | 'user2'
     selectedDayView: 'today', // 'today' | 'yesterday'
     streak: 12,
@@ -200,16 +246,63 @@ export function createDefaultState() {
   };
 }
 
+/**
+ * Clean, zero-dummy-data state for real personal daily tracking
+ */
+export function createRealInitialState(podCode = 'ZAU8PP') {
+  return {
+    podCode,
+    paired: true,
+    isDemoSnapshot: false,
+    lastActiveDate: getTodayIsoDate(),
+    updatedAt: Date.now(),
+    relationship: 'My Study Partner',
+    activeLogger: 'user1',
+    selectedDayView: 'today',
+    streak: 0,
+    bestStreak: 0,
+    daysTogether: 1,
+    yesterdayPercent: 0,
+    podHealth: 0,
+    gentleReminders: true,
+    user1: {
+      name: 'Omar',
+      email: '',
+      color: '#00B86B',
+      studyingNow: false,
+      studySubject: 'Deep Study',
+      timerRemainingSec: 1500,
+    },
+    user2: {
+      name: 'Partner',
+      email: '',
+      color: '#00A8E8',
+      studyingNow: false,
+      studySubject: 'Deep Study',
+      timerRemainingSec: 1500,
+    },
+    goals: structuredClone(PRESET_STUDY_GOALS).map((g) => ({
+      ...g,
+      user1: 0,
+      user2: 0,
+      yesterdayUser1: 0,
+      yesterdayUser2: 0,
+    })),
+    weeklyHistory: [
+      { day: 'M', label: 'Mon', u1: false, u2: false },
+      { day: 'T', label: 'Tue', u1: false, u2: false },
+      { day: 'W', label: 'Wed', u1: false, u2: false },
+      { day: 'T', label: 'Thu', u1: false, u2: false },
+      { day: 'F', label: 'Fri', u1: false, u2: false },
+      { day: 'S', label: 'Sat', u1: false, u2: false },
+      { day: 'S', label: 'Sun', u1: false, u2: false },
+    ],
+  };
+}
+
 export function createBlankOnboardingState() {
-  const base = createDefaultState();
+  const base = createRealInitialState();
   base.paired = false;
-  base.streak = 1;
-  base.daysTogether = 1;
-  base.goals = base.goals.map((g) => ({
-    ...g,
-    user1: 0,
-    user2: 0,
-  }));
   return base;
 }
 
@@ -302,17 +395,51 @@ export function computePodMetrics(state) {
       : user1Percent;
 
   // 21 dots per side (7 rows x 3 columns)
-  // In the screenshot at 43%, left side has 12 green dots filled (4 full rows of 3) and right side has 12 blue dots filled
   const user1Dots = isDefaultDemo ? 12 : Math.round(u1Ratio * 21);
   const user2Dots = isDefaultDemo ? 12 : state.paired ? Math.round(u2Ratio * 21) : 0;
+
+  // Compute Yesterday's actual dots & percent from yesterdayUser1 / yesterdayUser2 when not in demo mode
+  let yU1Sum = 0;
+  let yU2Sum = 0;
+  for (const g of dailyGoals) {
+    const t = Math.max(1, g.target || 1);
+    yU1Sum += Math.min(1, (g.yesterdayUser1 || 0) / t);
+    yU2Sum += Math.min(1, (g.yesterdayUser2 || 0) / t);
+  }
+  const yU1Ratio = yU1Sum / dailyGoals.length;
+  const yU2Ratio = yU2Sum / dailyGoals.length;
+  const computedYesterdayPercent = isDefaultDemo
+    ? state.yesterdayPercent ?? 87
+    : state.paired
+      ? Math.round(((yU1Ratio + yU2Ratio) / 2) * 100)
+      : Math.round(yU1Ratio * 100);
+
+  const yesterdayU1Dots = isDefaultDemo ? 18 : Math.round(yU1Ratio * 21);
+  const yesterdayU2Dots = isDefaultDemo ? 19 : state.paired ? Math.round(yU2Ratio * 21) : 0;
+
+  const computedPodHealth = isDefaultDemo
+    ? state.podHealth ?? 86
+    : Math.min(
+        100,
+        Math.round(
+          combinedPercent * 0.7 +
+            ((inSyncCount / Math.max(1, dailyGoals.length)) * 100) * 0.3
+        )
+      );
 
   return {
     user1Percent,
     user2Percent,
-    combinedPercent: state.selectedDayView === 'yesterday' ? state.yesterdayPercent : combinedPercent,
-    user1Dots: state.selectedDayView === 'yesterday' ? 18 : user1Dots,
-    user2Dots: state.selectedDayView === 'yesterday' ? 19 : user2Dots,
+    combinedPercent:
+      state.selectedDayView === 'yesterday'
+        ? computedYesterdayPercent
+        : combinedPercent,
+    yesterdayPercent: computedYesterdayPercent,
+    podHealth: computedPodHealth,
+    user1Dots: state.selectedDayView === 'yesterday' ? yesterdayU1Dots : user1Dots,
+    user2Dots: state.selectedDayView === 'yesterday' ? yesterdayU2Dots : user2Dots,
     inSyncCount: isDefaultDemo ? 2 : inSyncCount,
     totalDailyGoals: dailyGoals.length,
+    isDefaultDemo,
   };
 }

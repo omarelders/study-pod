@@ -223,7 +223,7 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
             title="Toggle between Today and Yesterday's snapshot"
           >
             <RollingNumber
-              value={`${state?.yesterdayPercent ?? 87}%`}
+              value={`${metrics?.yesterdayPercent ?? state?.yesterdayPercent ?? 0}%`}
               className="text-[#BD8218] font-extrabold"
             />
             <span className="text-[#263330]">

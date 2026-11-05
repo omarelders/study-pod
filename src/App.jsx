@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import {
   createDefaultState,
+  createRealInitialState,
   createBlankOnboardingState,
   computePodMetrics,
+  getCurrentWeekdayIndexMondayFirst,
 } from './data/studyData.js';
 import {
   syncPodStateToCloud,
@@ -27,7 +29,38 @@ import {
   SettingsAndOnboardingView,
 } from './components/PodPairingAndSettings.jsx';
 
-const STORAGE_KEY = 'studypod_state_v1';
+const STORAGE_KEY = 'studypod_state_v2';
+
+function enrichStateWithLiveProgress(nextState) {
+  const m = computePodMetrics(nextState);
+  if (m.isDefaultDemo) return { ...nextState, updatedAt: Date.now() };
+
+  const todayIdx = getCurrentWeekdayIndexMondayFirst();
+  const weekly = Array.isArray(nextState.weeklyHistory)
+    ? structuredClone(nextState.weeklyHistory)
+    : [];
+  if (weekly[todayIdx]) {
+    weekly[todayIdx].u1 = m.user1Percent >= 20;
+    weekly[todayIdx].u2 = m.user2Percent >= 20;
+  }
+
+  const anySyncToday = m.inSyncCount > 0 || m.combinedPercent >= 20;
+  const nextStreak =
+    anySyncToday && (nextState.streak || 0) === 0
+      ? 1
+      : nextState.streak || 0;
+  const nextBest = Math.max(nextState.bestStreak || 0, nextStreak);
+
+  return {
+    ...nextState,
+    isDemoSnapshot: false,
+    podHealth: m.podHealth,
+    streak: nextStreak,
+    bestStreak: nextBest,
+    weeklyHistory: weekly,
+    updatedAt: Date.now(),
+  };
+}
 
 export default function App() {
   const [state, setState] = useState(() => {
@@ -38,7 +71,7 @@ export default function App() {
         if (parsed && Array.isArray(parsed.goals)) return parsed;
       }
     } catch {}
-    return createDefaultState();
+    return createRealInitialState('ZAU8PP');
   });
 
   const [activeTab, setActiveTab] = useState('together'); // 'together' | 'insights' | 'you' | 'onboarding'
@@ -54,7 +87,10 @@ export default function App() {
 
   const commitState = useCallback((updater, syncToServer = true) => {
     setState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
+      const rawNext = typeof updater === 'function' ? updater(prev) : updater;
+      const next = syncToServer
+        ? enrichStateWithLiveProgress(rawNext)
+        : rawNext;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {}
@@ -77,9 +113,17 @@ export default function App() {
     let es;
     let cancelled = false;
 
-    const applyRemoteState = (remoteState) => {
+    const applyRemoteState = (remoteState, force = false) => {
       if (cancelled || !remoteState || !Array.isArray(remoteState.goals)) return;
       setState((prev) => {
+        if (
+          !force &&
+          prev?.updatedAt &&
+          remoteState?.updatedAt &&
+          remoteState.updatedAt <= prev.updatedAt
+        ) {
+          return prev;
+        }
         const merged = {
           ...remoteState,
           activeLogger: prev.activeLogger || remoteState.activeLogger || 'user1',
@@ -97,7 +141,7 @@ export default function App() {
       if (!cancelled) setBackendStatus(status);
       const remote = await fetchPodStateFromCloud(code);
       if (remote && Array.isArray(remote.goals)) {
-        applyRemoteState(remote);
+        applyRemoteState(remote, true);
       } else {
         await syncPodStateToCloud(code, state);
       }
@@ -291,8 +335,35 @@ export default function App() {
   };
 
   const handleResetDemo = () => {
-    const demo = createDefaultState();
-    commitState(demo, true);
+    const demo = { ...createDefaultState(), updatedAt: Date.now() };
+    setState(demo);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
+    } catch {}
+    syncPodStateToCloud(demo.podCode || 'ZAU8PP', demo);
+    setActiveTab('together');
+  };
+
+  const handleResetCleanZero = () => {
+    const clean = {
+      ...createRealInitialState(state.podCode || 'ZAU8PP'),
+      user1: {
+        ...createRealInitialState().user1,
+        name: state.user1?.name === 'Ced' ? 'Omar' : state.user1?.name || 'Omar',
+        color: state.user1?.color || '#00B86B',
+      },
+      user2: {
+        ...createRealInitialState().user2,
+        name: state.user2?.name === 'Joe' ? 'Partner' : state.user2?.name || 'Partner',
+        color: state.user2?.color || '#00A8E8',
+      },
+      updatedAt: Date.now(),
+    };
+    setState(clean);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+    } catch {}
+    syncPodStateToCloud(clean.podCode, clean);
     setActiveTab('together');
   };
 
@@ -420,6 +491,7 @@ export default function App() {
               onRefreshBackendStatus={refreshBackendStatus}
               onUpdateState={(next) => commitState(next, true)}
               onResetDemo={handleResetDemo}
+              onResetCleanZero={handleResetCleanZero}
               onStartFreshOnboarding={handleStartFreshOnboarding}
               onOpenPairing={() => setIsPairingOpen(true)}
               onCloseOnboarding={() => setActiveTab('together')}

@@ -1,5 +1,6 @@
 import {
   createDefaultState,
+  createRealInitialState,
   createBlankOnboardingState,
 } from '../src/data/studyData.js';
 
@@ -82,7 +83,7 @@ async function supabaseSavePod(code, state) {
 async function getOrCreatePod(code) {
   const existing = await supabaseGetPod(code);
   if (existing) return existing;
-  const fresh = { ...createDefaultState(), podCode: code };
+  const fresh = createRealInitialState(code);
   await supabaseSavePod(code, fresh);
   return fresh;
 }

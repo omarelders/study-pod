@@ -16,7 +16,12 @@ import {
   Flame,
   PartyPopper,
 } from 'lucide-react';
-import { WEEKLY_HISTORY_DEFAULT, formatGoalValue } from '../data/studyData.js';
+import {
+  WEEKLY_HISTORY_DEFAULT,
+  formatGoalValue,
+  getCurrentWeekRangeLabel,
+  getCurrentWeekdayIndexMondayFirst,
+} from '../data/studyData.js';
 import { RollingNumber } from './RollingNumber.jsx';
 
 const GOAL_ICON_MAP = {
@@ -199,14 +204,16 @@ function SplitHalfCircle({
 /**
  * 10-Segment 240° Horseshoe Pod Health Gauge (Exact replica of 00:58 - 00:59 in video)
  */
-function PodHealthHorseshoeGauge({ podHealth = 86 }) {
+function PodHealthHorseshoeGauge({ podHealth = 0 }) {
   const totalSegments = 10;
   const clampedHealth = Math.max(0, Math.min(100, podHealth));
-  // At 86%, 9 of the 10 segments are lit
+  // At 86%, 9 of the 10 segments are lit; at 0%, 0 segments are lit
   const activeSegments =
-    clampedHealth === 86
-      ? 9
-      : Math.max(1, Math.round((clampedHealth / 100) * totalSegments));
+    clampedHealth <= 0
+      ? 0
+      : clampedHealth === 86
+        ? 9
+        : Math.max(1, Math.round((clampedHealth / 100) * totalSegments));
 
   // 240° horseshoe sweep: from 210° (bottom-left) clockwise through 90° (top) to -30° (bottom-right)
   const totalSpan = 240;
@@ -404,18 +411,22 @@ export function InsightsView({ state, metrics }) {
       ? state.weeklyHistory
       : WEEKLY_HISTORY_DEFAULT;
 
-  const weeklySyncDays =
-    weeklyHistory.filter((d) => d.u1 && d.u2).length || 5;
+  const weeklySyncDays = weeklyHistory.filter((d) => d.u1 && d.u2).length;
+  const weekRangeLabel = getCurrentWeekRangeLabel(false);
+  const weekRangeUpper = getCurrentWeekRangeLabel(true);
+  const todayWeekdayIdx = getCurrentWeekdayIndexMondayFirst();
+  const isDemo = Boolean(metrics?.isDefaultDemo);
 
   const dailyGoals = (state?.goals || []).filter(
     (g) => g.enabled && g.category === 'daily'
   );
 
-  const u1Percent = metrics?.user1Percent ?? 48;
-  const u2Percent = metrics?.user2Percent ?? 54;
+  const u1Percent = metrics?.user1Percent ?? 0;
+  const u2Percent = metrics?.user2Percent ?? 0;
+  const effectivePodHealth = metrics?.podHealth ?? state?.podHealth ?? 0;
 
   // =========================================================================
-  // VIEW 2: Weekly Sync Detail Recap Screen (Exact replica of 01:00 - 01:02)
+  // VIEW 2: Weekly Sync Detail Recap Screen
   // =========================================================================
   if (showWeeklyDetail) {
     return (
@@ -435,7 +446,7 @@ export function InsightsView({ state, metrics }) {
         {/* Hero Sync Number + Floating Mascot Orb */}
         <div className="relative text-center mt-1 mb-6">
           <div className="text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase">
-            YOU &amp; {u2Name.toUpperCase()} · AUG 17 – 23
+            YOU &amp; {u2Name.toUpperCase()} · {weekRangeUpper}
           </div>
 
           <div className="relative inline-flex items-center justify-center mt-1">
@@ -510,8 +521,19 @@ export function InsightsView({ state, metrics }) {
                 color: '#009E5C',
               };
               const IconComponent = iconMeta.Icon;
-              const pattern =
-                GOAL_WEEKLY_PATTERNS[goal.id] || weeklyHistory;
+              const threshold = goal.id === 'reading' ? 0.31 : 0.2;
+              const u1HitToday =
+                (goal.user1 || 0) / Math.max(1, goal.target || 1) >= threshold;
+              const u2HitToday =
+                (goal.user2 || 0) / Math.max(1, goal.target || 1) >= threshold;
+
+              const pattern = isDemo
+                ? GOAL_WEEKLY_PATTERNS[goal.id] || weeklyHistory
+                : weeklyHistory.map((d, idx) =>
+                    idx === todayWeekdayIdx
+                      ? { u1: d.u1 || u1HitToday, u2: d.u2 || u2HitToday }
+                      : { u1: Boolean(d.u1), u2: Boolean(d.u2) }
+                  );
               const goalSyncCount = pattern.filter((d) => d.u1 && d.u2).length;
               const shortTitle =
                 goal.id === 'flashcards'
@@ -585,9 +607,9 @@ export function InsightsView({ state, metrics }) {
         style={{ '--stagger': 0 }}
         className="liquid-glass-card px-5 pt-5 pb-6 mb-6 ios-stagger-card"
       >
-        <PodHealthHorseshoeGauge podHealth={state?.podHealth ?? 86} />
+        <PodHealthHorseshoeGauge podHealth={effectivePodHealth} />
 
-        {/* 3 Borderless Stat Columns (Matches 00:59 in video 1:1) */}
+        {/* 3 Borderless Stat Columns */}
         <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-white/60 text-center">
           {/* Column 1: Best streak */}
           <div className="flex flex-col items-center">
@@ -595,7 +617,7 @@ export function InsightsView({ state, metrics }) {
               <Star className="w-4 h-4 text-[#F5A623] fill-[#F5A623]" />
             </div>
             <div className="text-[24px] font-extrabold text-[#00A859] leading-none tracking-[-0.03em] tabular-nums mt-0.5">
-              <RollingNumber value={state?.bestStreak ?? 18} />
+              <RollingNumber value={state?.bestStreak ?? 0} />
             </div>
             <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
               days
@@ -611,7 +633,7 @@ export function InsightsView({ state, metrics }) {
               <PartyPopper className="w-4 h-4 text-[#4F46E5]" />
             </div>
             <div className="text-[24px] font-extrabold text-[#1E1B5E] leading-none tracking-[-0.03em] tabular-nums mt-0.5">
-              <RollingNumber value={state?.daysTogether ?? 12} />
+              <RollingNumber value={state?.daysTogether ?? 1} />
             </div>
             <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
               total days
@@ -627,7 +649,7 @@ export function InsightsView({ state, metrics }) {
               <Flame className="w-4 h-4 text-[#E04F16] fill-[#F59E0B]" />
             </div>
             <div className="text-[24px] font-extrabold text-[#9E2A14] leading-none tracking-[-0.03em] tabular-nums mt-0.5">
-              <RollingNumber value={state?.streak ?? 12} />
+              <RollingNumber value={state?.streak ?? 0} />
             </div>
             <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
               days
@@ -639,7 +661,7 @@ export function InsightsView({ state, metrics }) {
         </div>
       </div>
 
-      {/* Weekly Section (Matches 00:59 in video: "Weekly" + "4 weeks ›" + Warm Golden Rising Sun Banner) */}
+      {/* Weekly Section */}
       <div style={{ '--stagger': 1 }} className="mb-6 ios-stagger-card">
         <div className="flex items-baseline justify-between mb-2.5 px-0.5">
           <h2 className="text-[19px] font-bold tracking-[-0.025em] text-[#141E28]">
@@ -650,7 +672,7 @@ export function InsightsView({ state, metrics }) {
             onClick={() => setShowWeeklyDetail(true)}
             className="text-[12.5px] font-semibold text-[#7A8B85] hover:text-[#141E28] transition cursor-pointer"
           >
-            4 weeks ›
+            Recap ›
           </button>
         </div>
 
@@ -682,7 +704,7 @@ export function InsightsView({ state, metrics }) {
                 YOUR WEEK
               </div>
               <div className="text-[20px] font-extrabold text-[#141E28] tracking-[-0.03em] leading-tight mt-0.5">
-                Aug 17 – 23
+                {weekRangeLabel}
               </div>
               <div className="text-[12.5px] font-medium text-[#8C7A54] mt-0.5">
                 Tap to open recap · {weeklySyncDays} days in sync
@@ -728,7 +750,16 @@ export function InsightsView({ state, metrics }) {
                 <RollingNumber value={`${u1Percent}%`} />
               </div>
               <div className="text-[11.5px] font-medium text-[#748680] mt-1">
-                {formatGoalValue(dailyGoals[0] || { displayFormat: 'hours-mins' }, dailyGoals[0]?.user1 ?? 360)} studied
+                {formatGoalValue(
+                  dailyGoals[0] || { displayFormat: 'hours-mins' },
+                  dailyGoals[0]?.user1 ?? 0
+                ) === '—'
+                  ? '0m'
+                  : formatGoalValue(
+                      dailyGoals[0] || { displayFormat: 'hours-mins' },
+                      dailyGoals[0]?.user1 ?? 0
+                    )}{' '}
+                studied
               </div>
             </div>
 
@@ -736,7 +767,7 @@ export function InsightsView({ state, metrics }) {
               <div
                 className="h-full rounded-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{
-                  width: `${Math.max(12, u1Percent)}%`,
+                  width: `${u1Percent <= 0 ? 0 : Math.max(10, u1Percent)}%`,
                   backgroundColor: u1Color,
                 }}
               />
@@ -763,7 +794,16 @@ export function InsightsView({ state, metrics }) {
                 <RollingNumber value={`${u2Percent}%`} />
               </div>
               <div className="text-[11.5px] font-medium text-[#748680] mt-1">
-                {formatGoalValue(dailyGoals[0] || { displayFormat: 'hours-mins' }, dailyGoals[0]?.user2 ?? 430)} studied
+                {formatGoalValue(
+                  dailyGoals[0] || { displayFormat: 'hours-mins' },
+                  dailyGoals[0]?.user2 ?? 0
+                ) === '—'
+                  ? '0m'
+                  : formatGoalValue(
+                      dailyGoals[0] || { displayFormat: 'hours-mins' },
+                      dailyGoals[0]?.user2 ?? 0
+                    )}{' '}
+                studied
               </div>
             </div>
 
@@ -771,7 +811,7 @@ export function InsightsView({ state, metrics }) {
               <div
                 className="h-full rounded-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{
-                  width: `${Math.max(12, u2Percent)}%`,
+                  width: `${u2Percent <= 0 ? 0 : Math.max(10, u2Percent)}%`,
                   backgroundColor: u2Color,
                 }}
               />

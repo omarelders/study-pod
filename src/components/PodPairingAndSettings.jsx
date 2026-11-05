@@ -383,6 +383,7 @@ export function SettingsAndOnboardingView({
   onRefreshBackendStatus,
   onUpdateState,
   onResetDemo,
+  onResetCleanZero,
   onStartFreshOnboarding,
   onOpenPairing,
   onCloseOnboarding,
@@ -1171,20 +1172,43 @@ export function SettingsAndOnboardingView({
       {/* DEMO & RESET SECTION */}
       <div style={{ '--stagger': 4 }} className="ios-stagger-card">
         <div className="text-[11px] font-bold tracking-[0.12em] text-[#6E827A] uppercase mb-1.5 px-3">
-          DEMO &amp; RESET
+          DATA &amp; RESET
         </div>
         <div className={IOS_GROUP_CARD}>
           <button
             type="button"
-            onClick={() => onResetDemo?.()}
+            onClick={() => onResetCleanZero?.()}
             className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#009E5C] text-white flex items-center justify-center shrink-0 shadow-2xs">
                 <RotateCcw className="w-4 h-4 stroke-[2.3]" />
               </div>
-              <span className="text-[14px] font-semibold text-[#008C52] tracking-[-0.02em]">
-                Restore 43% Screenshot Demo State
+              <div>
+                <div className="text-[14px] font-semibold text-[#008C52] tracking-[-0.02em]">
+                  Reset All Progress to 0 (Real Tracking)
+                </div>
+                <div className="text-[11px] font-medium text-[#7A8B85]">
+                  Clears demo data and starts fresh for today
+                </div>
+              </div>
+            </div>
+            <span className="text-[17px] leading-none font-semibold text-[#8A9B94]">
+              ›
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onResetDemo?.()}
+            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-[7px] bg-[#0EA5E9] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <RotateCcw className="w-4 h-4 stroke-[2.3]" />
+              </div>
+              <span className="text-[14px] font-semibold text-[#16202A] tracking-[-0.02em]">
+                Load 43% Video Demo Snapshot
               </span>
             </div>
             <span className="text-[17px] leading-none font-semibold text-[#8A9B94]">

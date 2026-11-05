@@ -11,7 +11,7 @@ import {
   Layers,
   Check,
 } from 'lucide-react';
-import { formatGoalValue } from '../data/studyData.js';
+import { formatGoalValue, getFormattedDayLabel } from '../data/studyData.js';
 import { RollingNumber } from './RollingNumber.jsx';
 
 function hexToRgba(hex, alpha = 0.14) {
@@ -96,16 +96,20 @@ export function StudyBentoGrid({
     if (userKey === 'user2' && !paired) return 0;
     const raw = goal[userKey] || 0;
     if (!isYesterday) return raw;
-    return Math.min(goal.target, Math.round(raw * 1.15 + (goal.step || 1)));
+    if (metrics?.isDefaultDemo) {
+      return Math.min(goal.target, Math.round(raw * 1.15 + (goal.step || 1)));
+    }
+    const yKey = userKey === 'user2' ? 'yesterdayUser2' : 'yesterdayUser1';
+    return goal[yKey] || 0;
   };
 
   return (
     <div className="px-4 pt-1 pb-4">
-      {/* Sub-header: MON · AUG 24 / Today's Progress / Minimal User Legend */}
+      {/* Sub-header: Live Calendar Date / Today's Progress / Minimal User Legend */}
       <div className="mb-3.5 px-0.5">
         <div className="flex items-center justify-between">
           <div className="text-[10px] font-bold tracking-[0.11em] text-[#6E827B] uppercase">
-            {isYesterday ? 'SUN · AUG 23' : 'MON · AUG 24'}
+            {getFormattedDayLabel(isYesterday)}
           </div>
 
           {/* Minimal Native Legend: ● Ced  ● Joe */}
