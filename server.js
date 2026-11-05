@@ -139,7 +139,12 @@ export function createAppServer(dbPath = DEFAULT_DB_PATH) {
 
     try {
       if (pathname === '/api/health' && req.method === 'GET') {
-        sendJson(res, 200, { ok: true });
+        sendJson(res, 200, {
+          ok: true,
+          backend: 'local-sqlite',
+          tableReady: true,
+          message: 'Connected to local Node.js SQLite (studypod.db)',
+        });
         return;
       }
 

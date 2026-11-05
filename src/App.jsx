@@ -15,6 +15,7 @@ import {
 import {
   syncPodStateToCloud,
   fetchPodStateFromCloud,
+  checkBackendHealth,
 } from './data/supabaseSync.js';
 import HeroGauge from './components/HeroGauge.jsx';
 import StudyBentoGrid from './components/StudyBentoGrid.jsx';
@@ -44,6 +45,12 @@ export default function App() {
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [isPairingOpen, setIsPairingOpen] = useState(false);
+  const [backendStatus, setBackendStatus] = useState({
+    ok: true,
+    backend: 'checking',
+    tableReady: false,
+    message: 'Checking cloud sync...',
+  });
 
   const commitState = useCallback((updater, syncToServer = true) => {
     setState((prev) => {
@@ -58,33 +65,64 @@ export default function App() {
     });
   }, []);
 
-  // Connect to live Server-Sent Events (SSE) stream for real-time 2-device Pod sync
+  const refreshBackendStatus = useCallback(async () => {
+    const status = await checkBackendHealth(state.podCode || 'ZAU8PP', state);
+    setBackendStatus(status);
+    return status;
+  }, [state]);
+
+  // Connect to live Server-Sent Events (SSE) stream + Cloud Poll for real-time 2-device Pod sync
   useEffect(() => {
     const code = state.podCode || 'ZAU8PP';
     let es;
+    let cancelled = false;
+
+    const applyRemoteState = (remoteState) => {
+      if (cancelled || !remoteState || !Array.isArray(remoteState.goals)) return;
+      setState((prev) => {
+        const merged = {
+          ...remoteState,
+          activeLogger: prev.activeLogger || remoteState.activeLogger || 'user1',
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    };
+
+    // Initial cloud sync & seed if empty
+    (async () => {
+      const status = await checkBackendHealth(code, null);
+      if (!cancelled) setBackendStatus(status);
+      const remote = await fetchPodStateFromCloud(code);
+      if (remote && Array.isArray(remote.goals)) {
+        applyRemoteState(remote);
+      } else {
+        await syncPodStateToCloud(code, state);
+      }
+    })();
+
     try {
       es = new EventSource(`/api/pods/${encodeURIComponent(code)}/events`);
       es.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload?.state && Array.isArray(payload.state.goals)) {
-            setState((prev) => {
-              const merged = {
-                ...payload.state,
-                activeLogger:
-                  prev.activeLogger || payload.state.activeLogger || 'user1',
-              };
-              try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-              } catch {}
-              return merged;
-            });
-          }
+          if (payload?.state) applyRemoteState(payload.state);
         } catch {}
       };
     } catch {}
+
+    // 5-second background sync for serverless/Supabase multi-device updates
+    const pollId = setInterval(async () => {
+      const remote = await fetchPodStateFromCloud(code);
+      if (remote) applyRemoteState(remote);
+    }, 5000);
+
     return () => {
+      cancelled = true;
       if (es) es.close();
+      clearInterval(pollId);
     };
   }, [state.podCode]);
 
@@ -378,6 +416,8 @@ export default function App() {
             <SettingsAndOnboardingView
               state={state}
               mode={activeTab === 'onboarding' ? 'onboarding' : 'settings'}
+              backendStatus={backendStatus}
+              onRefreshBackendStatus={refreshBackendStatus}
               onUpdateState={(next) => commitState(next, true)}
               onResetDemo={handleResetDemo}
               onStartFreshOnboarding={handleStartFreshOnboarding}

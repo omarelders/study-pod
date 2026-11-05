@@ -6,6 +6,7 @@ import {
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
   ''
 ).replace(/\/+$/, '');
 
@@ -13,6 +14,9 @@ const SUPABASE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   '';
 
 const HAS_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_KEY);
@@ -93,15 +97,52 @@ export default async function handler(req, res) {
     return;
   }
 
-  const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
+  const url = new URL(
+    req.url || '/',
+    `https://${req.headers.host || 'localhost'}`
+  );
   const pathname = url.pathname;
 
   try {
     if (pathname === '/api/health' && req.method === 'GET') {
-      res.status(200).json({
-        ok: true,
-        backend: HAS_SUPABASE ? 'supabase' : 'vercel-memory-fallback',
-      });
+      if (!HAS_SUPABASE) {
+        res.status(200).json({
+          ok: true,
+          backend: 'vercel-memory-fallback',
+          tableReady: false,
+          message:
+            'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel Settings -> Environment Variables and Redeploy.',
+        });
+        return;
+      }
+
+      try {
+        const probe = await fetch(
+          `${SUPABASE_URL}/rest/v1/pods?select=code&limit=1`,
+          {
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+            },
+          }
+        );
+        res.status(200).json({
+          ok: true,
+          backend: 'supabase',
+          tableReady: probe.ok,
+          status: probe.status,
+          message: probe.ok
+            ? 'Connected to Supabase (public.pods table verified)'
+            : 'Supabase URL/Key found, but public.pods table was not accessible (check SQL schema & RLS)',
+        });
+      } catch (e) {
+        res.status(200).json({
+          ok: true,
+          backend: 'supabase',
+          tableReady: false,
+          message: e.message || 'Failed to reach Supabase',
+        });
+      }
       return;
     }
 

@@ -379,6 +379,8 @@ function GentleCheckinBuddyAvatar() {
 export function SettingsAndOnboardingView({
   state,
   mode = 'settings',
+  backendStatus,
+  onRefreshBackendStatus,
   onUpdateState,
   onResetDemo,
   onStartFreshOnboarding,
@@ -386,6 +388,7 @@ export function SettingsAndOnboardingView({
   onCloseOnboarding,
 }) {
   const [wizardOpen, setWizardOpen] = useState(mode === 'onboarding');
+  const [verifyingCloud, setVerifyingCloud] = useState(false);
   const [step, setStep] = useState(1); // 1 | 2 | 3
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
@@ -917,7 +920,43 @@ export function SettingsAndOnboardingView({
             </div>
           </div>
 
-          {/* Row 2: View Pod Details */}
+          {/* Row 2: Cloud Database & Sync Status */}
+          <div className="px-4 py-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  backendStatus?.tableReady
+                    ? 'bg-[#00C853] shadow-[0_0_8px_#00C853]'
+                    : 'bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]'
+                }`}
+              />
+              <div className="truncate">
+                <div className="text-[13.5px] font-bold text-[#16202A] tracking-[-0.01em] truncate">
+                  {backendStatus?.backend === 'supabase' && backendStatus?.tableReady
+                    ? 'Supabase Cloud Connected'
+                    : backendStatus?.backend === 'local-sqlite'
+                      ? 'Local SQLite Connected'
+                      : 'Vercel Cloud (Needs Supabase Keys)'}
+                </div>
+                <div className="text-[11px] font-medium text-[#6E827A] truncate">
+                  {backendStatus?.message || 'Real-time pod sync active'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setVerifyingCloud(true);
+                await onRefreshBackendStatus?.();
+                setTimeout(() => setVerifyingCloud(false), 400);
+              }}
+              className="px-2.5 py-1 rounded-full bg-[#E9F7F0] hover:bg-[#D5F0E3] text-[#009E5C] text-[11px] font-bold shrink-0 transition ios-press cursor-pointer"
+            >
+              {verifyingCloud ? 'Syncing…' : 'Verify Sync'}
+            </button>
+          </div>
+
+          {/* Row 3: View Pod Details */}
           <button
             type="button"
             onClick={() => onOpenPairing?.()}

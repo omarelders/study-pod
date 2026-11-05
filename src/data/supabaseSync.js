@@ -1,8 +1,17 @@
 /**
  * Zero-dependency Supabase PostgREST + Local /api Fallback Sync Client
  */
-const SUPABASE_URL = (import.meta.env?.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = (
+  (typeof __STUDYPOD_SUPABASE_URL__ !== 'undefined' && __STUDYPOD_SUPABASE_URL__) ||
+  import.meta.env?.VITE_SUPABASE_URL ||
+  ''
+).replace(/\/+$/, '');
+
+const SUPABASE_ANON_KEY =
+  (typeof __STUDYPOD_SUPABASE_ANON_KEY__ !== 'undefined' &&
+    __STUDYPOD_SUPABASE_ANON_KEY__) ||
+  import.meta.env?.VITE_SUPABASE_ANON_KEY ||
+  '';
 
 export const HAS_DIRECT_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
@@ -12,7 +21,7 @@ export async function syncPodStateToCloud(code, state) {
 
   if (HAS_DIRECT_SUPABASE) {
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/pods`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/pods`, {
         method: 'POST',
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -26,7 +35,7 @@ export async function syncPodStateToCloud(code, state) {
           updated_at: Date.now(),
         }),
       });
-      return;
+      if (res.ok) return;
     } catch {}
   }
 
@@ -72,4 +81,58 @@ export async function fetchPodStateFromCloud(code) {
   } catch {}
 
   return null;
+}
+
+export async function checkBackendHealth(currentCode = 'ZAU8PP', currentState = null) {
+  if (HAS_DIRECT_SUPABASE) {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/pods?select=code&limit=1`,
+        {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+        }
+      );
+      if (res.ok) {
+        if (currentState) {
+          await syncPodStateToCloud(currentCode, currentState);
+        }
+        return {
+          ok: true,
+          backend: 'supabase',
+          tableReady: true,
+          message: 'Supabase Cloud connected & public.pods verified',
+        };
+      }
+    } catch {}
+  }
+
+  try {
+    const res = await fetch('/api/health');
+    if (res.ok) {
+      const data = await res.json();
+      if (currentState && data?.tableReady) {
+        await syncPodStateToCloud(currentCode, currentState);
+      }
+      return {
+        ok: Boolean(data?.ok),
+        backend: data?.backend || 'api',
+        tableReady: Boolean(data?.tableReady ?? true),
+        message:
+          data?.message ||
+          (data?.backend === 'supabase'
+            ? 'Supabase Cloud connected via Vercel /api'
+            : 'Connected to API backend'),
+      };
+    }
+  } catch {}
+
+  return {
+    ok: false,
+    backend: 'local-storage',
+    tableReady: false,
+    message: 'Offline / Browser LocalStorage mode',
+  };
 }
