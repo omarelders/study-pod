@@ -443,3 +443,135 @@ export function computePodMetrics(state) {
     isDefaultDemo,
   };
 }
+
+/**
+ * Wall-clock Pomodoro timer start / pause / resume / preset switch helper.
+ * Stores an absolute `timerEndAt` epoch timestamp (ms) so the timer continues
+ * accurately even when the iPhone screen is locked, Safari is backgrounded,
+ * or the PWA is closed and reopened later.
+ */
+export function toggleUserTimer(
+  state,
+  userKey,
+  durationSec,
+  subjectName,
+  forcePresetReset = false,
+  now = Date.now()
+) {
+  const uKey = userKey || state.activeLogger || 'user1';
+  const curUser = state[uKey] || {};
+  const currentlyRunning = Boolean(curUser.studyingNow);
+
+  if (forcePresetReset) {
+    const totalSec = durationSec || 1500;
+    return {
+      ...state,
+      [uKey]: {
+        ...curUser,
+        studyingNow: currentlyRunning,
+        timerPaused: false,
+        timerTotalSec: totalSec,
+        timerRemainingSec: totalSec,
+        timerEndAt: currentlyRunning ? now + totalSec * 1000 : null,
+        studySubject: subjectName || curUser.studySubject || 'Deep Study',
+      },
+    };
+  }
+
+  if (currentlyRunning) {
+    const rem = curUser.timerEndAt
+      ? Math.max(1, Math.ceil((curUser.timerEndAt - now) / 1000))
+      : curUser.timerRemainingSec ?? 1500;
+    return {
+      ...state,
+      [uKey]: {
+        ...curUser,
+        studyingNow: false,
+        timerPaused: true,
+        timerRemainingSec: rem,
+        timerEndAt: null,
+      },
+    };
+  }
+
+  const resumingPaused =
+    Boolean(curUser.timerPaused) && (curUser.timerRemainingSec ?? 0) > 0;
+  const totalSec = resumingPaused
+    ? curUser.timerTotalSec || durationSec || 1500
+    : durationSec ?? curUser.timerTotalSec ?? 1500;
+  const runSec = resumingPaused ? curUser.timerRemainingSec : totalSec;
+
+  return {
+    ...state,
+    [uKey]: {
+      ...curUser,
+      studyingNow: true,
+      timerPaused: false,
+      timerTotalSec: totalSec,
+      timerRemainingSec: runSec,
+      timerEndAt: now + runSec * 1000,
+      studySubject: subjectName || curUser.studySubject || 'Deep Study',
+    },
+  };
+}
+
+/**
+ * Reconciles running timers against the hardware wall clock (`now = Date.now()`).
+ * Ensures zero drift when the iPhone screen is locked or the app is in the background,
+ * and automatically credits completed sessions upon completion.
+ */
+export function reconcileRunningTimers(state, now = Date.now()) {
+  if (!state) {
+    return { nextState: state, changed: false, completedUsers: [] };
+  }
+  const u1Running = Boolean(state.user1?.studyingNow);
+  const u2Running = Boolean(state.user2?.studyingNow);
+  if (!u1Running && !u2Running) {
+    return { nextState: state, changed: false, completedUsers: [] };
+  }
+
+  let changed = false;
+  const completedUsers = [];
+  const next = structuredClone(state);
+
+  for (const uKey of ['user1', 'user2']) {
+    const u = next[uKey];
+    if (!u?.studyingNow) continue;
+
+    const totalSec = u.timerTotalSec || 1500;
+    if (typeof u.timerEndAt !== 'number') {
+      const fallbackSec = u.timerRemainingSec ?? totalSec;
+      u.timerEndAt = now + fallbackSec * 1000;
+      u.timerTotalSec = totalSec;
+      changed = true;
+    }
+
+    const rem = Math.max(0, Math.ceil((u.timerEndAt - now) / 1000));
+    if (rem <= 0) {
+      const creditedMinutes = Math.max(1, Math.round(totalSec / 60));
+      u.studyingNow = false;
+      u.timerPaused = false;
+      u.timerEndAt = null;
+      u.timerRemainingSec = totalSec;
+      next.goals = (next.goals || []).map((g) =>
+        g.id === 'study-hours'
+          ? { ...g, [uKey]: (g[uKey] || 0) + creditedMinutes }
+          : g
+      );
+      completedUsers.push({
+        userKey: uKey,
+        minutes: creditedMinutes,
+        userName: u.name || uKey,
+      });
+      changed = true;
+    } else if (rem !== u.timerRemainingSec) {
+      u.timerRemainingSec = rem;
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return { nextState: state, changed: false, completedUsers: [] };
+  }
+  return { nextState: next, changed: true, completedUsers };
+}

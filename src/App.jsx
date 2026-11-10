@@ -14,6 +14,8 @@ import {
   createBlankOnboardingState,
   computePodMetrics,
   getCurrentWeekdayIndexMondayFirst,
+  toggleUserTimer,
+  reconcileRunningTimers,
 } from './data/studyData.js';
 import {
   syncPodStateToCloud,
@@ -84,8 +86,9 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.goals)) {
+          const reconciled = reconcileRunningTimers(parsed, Date.now());
           return {
-            ...parsed,
+            ...reconciled.nextState,
             lang: parsed.lang || savedLang,
           };
         }
@@ -261,11 +264,12 @@ export default function App() {
         ) {
           return prev;
         }
-        const merged = {
+        const rawMerged = {
           ...remoteState,
           activeLogger: prev.activeLogger || remoteState.activeLogger || 'user1',
           lang: prev.lang || remoteState.lang || 'en',
         };
+        const merged = reconcileRunningTimers(rawMerged, Date.now()).nextState;
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         } catch {}
@@ -308,37 +312,131 @@ export default function App() {
     };
   }, [state.podCode]);
 
-  // Live 1-second Pomodoro / Focus Timer tick
+  // Wall-clock Pomodoro / Focus Timer reconciliation + Screen Wake Lock
+  // Continues counting down accurately even when the iPhone screen is locked
+  // or Safari/PWA is in the background by comparing against `timerEndAt` (Date.now()).
   useEffect(() => {
     const u1Running = state.user1?.studyingNow;
     const u2Running = state.user2?.studyingNow;
     if (!u1Running && !u2Running) return;
 
-    const timer = setInterval(() => {
-      commitState((prev) => {
-        const next = structuredClone(prev);
-        for (const uKey of ['user1', 'user2']) {
-          if (next[uKey]?.studyingNow) {
-            const rem = (next[uKey].timerRemainingSec ?? 1500) - 1;
-            if (rem <= 0) {
-              next[uKey].studyingNow = false;
-              next[uKey].timerRemainingSec = 1500;
-              next.goals = next.goals.map((g) =>
-                g.id === 'study-hours'
-                  ? { ...g, [uKey]: (g[uKey] || 0) + 25 }
-                  : g
-              );
-            } else {
-              next[uKey].timerRemainingSec = rem;
-            }
-          }
-        }
-        return next;
-      }, false);
-    }, 1000);
+    const playCompletionChime = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.11);
+          gain.gain.setValueAtTime(0.001, now + i * 0.11);
+          gain.gain.exponentialRampToValueAtTime(0.14, now + i * 0.11 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.11 + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.11);
+          osc.stop(now + i * 0.11 + 0.46);
+        });
+      } catch {}
+    };
 
-    return () => clearInterval(timer);
-  }, [state.user1?.studyingNow, state.user2?.studyingNow, commitState]);
+    const syncWallClock = () => {
+      setState((prev) => {
+        const { nextState, changed, completedUsers } = reconcileRunningTimers(
+          prev,
+          Date.now()
+        );
+        if (!changed) return prev;
+
+        const finalState =
+          completedUsers.length > 0
+            ? enrichStateWithLiveProgress(nextState)
+            : nextState;
+
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(finalState));
+        } catch {}
+
+        if (completedUsers.length > 0) {
+          triggerIosHaptic('heavy');
+          playCompletionChime();
+          if (finalState?.podCode) {
+            syncPodStateToCloud(finalState.podCode, finalState);
+          }
+          try {
+            if (
+              typeof Notification !== 'undefined' &&
+              Notification.permission === 'granted'
+            ) {
+              const finished = completedUsers[0];
+              new Notification('StudyPod Focus Complete', {
+                body: `+${finished.minutes}m logged for ${finished.userName}!`,
+                icon: '/icon-192.png',
+              });
+            }
+          } catch {}
+        }
+
+        return finalState;
+      });
+    };
+
+    syncWallClock();
+    const timer = setInterval(syncWallClock, 1000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncWallClock();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', syncWallClock);
+    window.addEventListener('pageshow', syncWallClock);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', syncWallClock);
+      window.removeEventListener('pageshow', syncWallClock);
+    };
+  }, [state.user1?.studyingNow, state.user2?.studyingNow]);
+
+  // Keep iPhone screen awake while Focus Timer is actively open on desk (Screen Wake Lock API)
+  useEffect(() => {
+    const anyRunning = Boolean(
+      state.user1?.studyingNow || state.user2?.studyingNow
+    );
+    if (!anyRunning || typeof navigator === 'undefined' || !navigator.wakeLock) {
+      return;
+    }
+
+    let wakeLockSentinel = null;
+    let cancelled = false;
+
+    const acquireWakeLock = async () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+      try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+      } catch {}
+    };
+
+    acquireWakeLock();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        acquireWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
+      try {
+        wakeLockSentinel?.release?.();
+      } catch {}
+    };
+  }, [state.user1?.studyingNow, state.user2?.studyingNow]);
 
   const metrics = computePodMetrics(state);
 
@@ -408,22 +506,31 @@ export default function App() {
     setIsQuickLogOpen(true);
   };
 
-  const handleToggleTimer = (userKey, durationSec, subjectName) => {
+  const handleToggleTimer = (
+    userKey,
+    durationSec,
+    subjectName,
+    forcePresetReset = false
+  ) => {
     const uKey = userKey || state.activeLogger || 'user1';
-    commitState((prev) => {
-      const currentlyRunning = prev[uKey]?.studyingNow;
-      return {
-        ...prev,
-        [uKey]: {
-          ...prev[uKey],
-          studyingNow: !currentlyRunning,
-          timerRemainingSec:
-            durationSec ?? prev[uKey]?.timerRemainingSec ?? 1500,
-          studySubject:
-            subjectName || prev[uKey]?.studySubject || 'Deep Study',
-        },
-      };
-    });
+    try {
+      if (
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'default'
+      ) {
+        Notification.requestPermission().catch(() => {});
+      }
+    } catch {}
+    commitState((prev) =>
+      toggleUserTimer(
+        prev,
+        uKey,
+        durationSec,
+        subjectName,
+        forcePresetReset,
+        Date.now()
+      )
+    );
   };
 
   const handleCompletePomodoro = (minutes = 25, userKey) => {
@@ -433,7 +540,9 @@ export default function App() {
       [uKey]: {
         ...prev[uKey],
         studyingNow: false,
-        timerRemainingSec: 1500,
+        timerPaused: false,
+        timerEndAt: null,
+        timerRemainingSec: prev[uKey]?.timerTotalSec || 1500,
       },
       goals: prev.goals.map((g) =>
         g.id === 'study-hours'

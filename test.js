@@ -5,6 +5,8 @@ import {
   computePodMetrics,
   formatGoalValue,
   PRESET_STUDY_GOALS,
+  toggleUserTimer,
+  reconcileRunningTimers,
 } from './src/data/studyData.js';
 import {
   getTexts,
@@ -55,6 +57,33 @@ assert.equal(getWeekdayLabel('M', 0, 'ar'), 'ن');
 const indexCss = fs.readFileSync('./src/index.css', 'utf8');
 assert.ok(indexCss.includes('[dir="rtl"] *:not(.font-mono)'));
 assert.ok(indexCss.includes('inset-inline-start: 52px'));
+
+// 2d. Verify Wall-Clock Background Timer (survives screen lock / backgrounding)
+const t0 = 1_700_000_000_000;
+const startedTimerState = toggleUserTimer(
+  defaultState,
+  'user1',
+  1500,
+  'Deep Study',
+  false,
+  t0
+);
+assert.equal(startedTimerState.user1.studyingNow, true);
+assert.equal(startedTimerState.user1.timerEndAt, t0 + 1_500_000);
+// Simulate 10 minutes (600s) with screen locked (zero JS ticks during lock)
+const after10Min = reconcileRunningTimers(startedTimerState, t0 + 600_000);
+assert.equal(after10Min.changed, true);
+assert.equal(after10Min.nextState.user1.timerRemainingSec, 900);
+assert.equal(after10Min.nextState.user1.studyingNow, true);
+// Simulate timer finishing while screen was locked (26 minutes elapsed)
+const afterFinish = reconcileRunningTimers(startedTimerState, t0 + 1_560_000);
+assert.equal(afterFinish.nextState.user1.studyingNow, false);
+assert.equal(afterFinish.completedUsers.length, 1);
+assert.equal(afterFinish.completedUsers[0].minutes, 25);
+const u1HoursAfter = afterFinish.nextState.goals.find(
+  (g) => g.id === 'study-hours'
+).user1;
+assert.equal(u1HoursAfter, 360 + 25);
 
 // 3. Verify SQLite API endpoints in-memory
 const server = createAppServer(':memory:');

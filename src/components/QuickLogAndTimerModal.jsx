@@ -177,16 +177,23 @@ export function QuickLogAndTimerModal({
     timerPresets.find((p) => p.id === selectedPresetId) || timerPresets[0];
 
   const isRunning = Boolean(activeUser.studyingNow);
+  const isPaused = Boolean(activeUser.timerPaused);
+  const effectiveTotalSec =
+    (isRunning || isPaused) && activeUser.timerTotalSec
+      ? activeUser.timerTotalSec
+      : selectedPreset.seconds;
   const displaySeconds = isRunning
-    ? activeUser.timerRemainingSec ?? selectedPreset.seconds
-    : selectedPreset.seconds;
+    ? activeUser.timerEndAt
+      ? Math.max(0, Math.ceil((activeUser.timerEndAt - Date.now()) / 1000))
+      : activeUser.timerRemainingSec ?? effectiveTotalSec
+    : isPaused
+      ? activeUser.timerRemainingSec ?? effectiveTotalSec
+      : selectedPreset.seconds;
   const timerProgress = Math.max(
     0,
     Math.min(
       1,
-      1 -
-        displaySeconds /
-          Math.max(1, selectedPreset.seconds, displaySeconds)
+      1 - displaySeconds / Math.max(1, effectiveTotalSec, displaySeconds)
     )
   );
 
@@ -206,9 +213,7 @@ export function QuickLogAndTimerModal({
   const handleSelectPreset = (preset) => {
     triggerIosHaptic('light');
     setSelectedPresetId(preset.id);
-    if (isRunning && onToggleTimer) {
-      onToggleTimer(activeLogger, preset.seconds, preset.subject);
-    }
+    onToggleTimer?.(activeLogger, preset.seconds, preset.subject, true);
   };
 
   const ringRadius = 21;
