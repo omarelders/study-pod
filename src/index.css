@@ -7,6 +7,8 @@
     --ios-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
     --ios-standard: cubic-bezier(0.4, 0, 0.2, 1);
     --target-size: 24px;
+    --accent-color: #34C759;
+    --focus-color: #009E5C;
   }
 
   @media (pointer: coarse) {
@@ -55,12 +57,29 @@
   }
 }
 
+/* Native Apple SF Pro Rounded on iOS WebKit for Hero Gauges & Stat Readouts */
+.font-sf-rounded {
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Native HTML Switch Control Styling (Safari 17.4+ / iOS 18+) */
+input[type="checkbox"][switch] {
+  accent-color: var(--accent-color, #34C759);
+  margin: 0;
+  cursor: pointer;
+}
+
+input[type="checkbox"][switch]:focus-visible {
+  outline: 3px solid var(--focus-color, #009E5C);
+  outline-offset: 4px;
+}
+
 /* ==========================================================================
-   iPhone Safe-Area & Form-Factor Adaptation Utilities
+   iPhone Safe-Area, Progressive Blur Chrome & Modal Sheet Recession
    ========================================================================== */
 
 .ios-safe-header {
-  padding-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
+  padding-top: max(0.85rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
   padding-left: max(1.15rem, env(safe-area-inset-left, 0px));
   padding-right: max(1.15rem, env(safe-area-inset-right, 0px));
 }
@@ -79,6 +98,51 @@
   padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Native iOS 18/26 UINavigationBar Progressive Blur (no flat web border-b) */
+.ios-nav-blur {
+  background: linear-gradient(
+    180deg,
+    rgba(208, 233, 223, 0.86) 0%,
+    rgba(208, 233, 223, 0.56) 72%,
+    rgba(208, 233, 223, 0) 100%
+  );
+  backdrop-filter: blur(24px) saturate(195%);
+  -webkit-backdrop-filter: blur(24px) saturate(195%);
+}
+
+/* Native UIModalPresentationPageSheet Background Recession Physics */
+.ios-app-shell {
+  transition:
+    transform 0.44s var(--ios-spring),
+    border-radius 0.44s var(--ios-spring),
+    filter 0.44s var(--ios-spring);
+  transform-origin: center top;
+  will-change: transform;
+}
+
+.ios-app-shell-recessed {
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.948) translate3d(0, 6px, 0);
+    border-radius: 34px;
+  }
+  filter: brightness(0.95) saturate(0.94);
+}
+
+/* Authentic iOS 18 UITableViewStyleInsetGrouped 52px-Inset Hairline Dividers */
+.ios-inset-list > * + * {
+  position: relative;
+}
+.ios-inset-list > * + *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 52px;
+  right: 0;
+  height: 0.5px;
+  background-color: rgba(15, 28, 24, 0.08);
+  pointer-events: none;
 }
 
 /* Expand hit area for compact icon-only controls on touch screens without visual bloat */
@@ -125,7 +189,9 @@ input[type="range"].ios-slider::-webkit-slider-thumb {
   transition: transform 0.2s var(--ios-spring-bounce);
 }
 input[type="range"].ios-slider:active::-webkit-slider-thumb {
-  transform: scale(1.16);
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(1.16);
+  }
 }
 
 /* ==========================================================================
@@ -156,20 +222,24 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
     linear-gradient(180deg, #D0E9DF 0%, #E1EFEA 48%, #EAF3F0 100%);
 }
 
-/* 2. Primary Liquid Glass Card (Sculpted Optical Slab + Specular Sheen Sweep) */
+/* 2. Primary Liquid Glass Card (Sculpted Optical Slab + Directional Specular Rim) */
 .liquid-glass-card {
   position: relative;
   overflow: hidden;
   background: linear-gradient(
     145deg,
-    rgba(255, 255, 255, 0.68) 0%,
-    rgba(255, 255, 255, 0.42) 48%,
-    rgba(255, 255, 255, 0.58) 100%
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.44) 48%,
+    rgba(255, 255, 255, 0.60) 100%
   );
   backdrop-filter: blur(30px) saturate(210%) brightness(1.03);
   -webkit-backdrop-filter: blur(30px) saturate(210%) brightness(1.03);
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.82);
+  border-top-color: rgba(255, 255, 255, 0.96);
+  border-left-color: rgba(255, 255, 255, 0.90);
+  border-right-color: rgba(255, 255, 255, 0.62);
+  border-bottom-color: rgba(255, 255, 255, 0.50);
   box-shadow:
     0 16px 38px -10px rgba(10, 40, 32, 0.085),
     0 4px 12px -2px rgba(10, 40, 32, 0.04),
@@ -219,7 +289,7 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .liquid-glass-card:hover::after {
     transform: rotate(24deg) translate3d(380%, 0, 0);
   }
@@ -244,8 +314,10 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
 }
 
 .liquid-glass-card:active {
-  transform: translate3d(0, 0, 0) scale(0.974);
-  transition-duration: 0.12s;
+  @media (prefers-reduced-motion: no-preference) {
+    transform: translate3d(0, 0, 0) scale(0.974);
+    transition-duration: 0.12s;
+  }
 }
 
 /* 3. Liquid Glass Pill / Capsule */
@@ -253,8 +325,8 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
   position: relative;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.74) 0%,
-    rgba(255, 255, 255, 0.44) 100%
+    rgba(255, 255, 255, 0.76) 0%,
+    rgba(255, 255, 255, 0.46) 100%
   );
   backdrop-filter: blur(20px) saturate(200%);
   -webkit-backdrop-filter: blur(20px) saturate(200%);
@@ -270,15 +342,17 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
     background 0.22s var(--ios-standard);
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .liquid-glass-pill:hover {
     transform: translate3d(0, -1px, 0) scale(1.02);
   }
 }
 
 .liquid-glass-pill:active {
-  transform: scale(0.93);
-  transition-duration: 0.1s;
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.93);
+    transition-duration: 0.1s;
+  }
 }
 
 /* Warm Amber-Tinted Liquid Glass Pill for "87% YESTERDAY" */
@@ -300,15 +374,17 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
   transition: transform 0.28s var(--ios-spring-bounce), box-shadow 0.22s ease;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .liquid-glass-amber-pill:hover {
     transform: translate3d(0, -1px, 0) scale(1.03);
   }
 }
 
 .liquid-glass-amber-pill:active {
-  transform: scale(0.94);
-  transition-duration: 0.1s;
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.94);
+    transition-duration: 0.1s;
+  }
 }
 
 /* 4. iOS 26 Floating Liquid Glass Tab Bar */
@@ -367,7 +443,7 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
   transition: transform 0.32s var(--ios-spring-bounce), box-shadow 0.25s ease;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .liquid-glass-emerald-orb:hover {
     transform: translate3d(0, -2px, 0) scale(1.05);
     box-shadow:
@@ -379,8 +455,10 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
 }
 
 .liquid-glass-emerald-orb:active {
-  transform: scale(0.91);
-  transition-duration: 0.1s;
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.91);
+    transition-duration: 0.1s;
+  }
 }
 
 .liquid-glass-emerald-orb::before {
@@ -413,11 +491,15 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
     0 -16px 56px -8px rgba(8, 32, 25, 0.24),
     0 20px 60px -10px rgba(8, 32, 25, 0.18),
     inset 0 2px 1.5px 0 rgba(255, 255, 255, 0.98);
-  animation: iosSheetPresent 0.44s var(--ios-spring) both;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosSheetPresent 0.44s var(--ios-spring) both;
+  }
 }
 
 .ios-sheet-enter {
-  animation: iosSheetPresent 0.44s var(--ios-spring) both;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosSheetPresent 0.44s var(--ios-spring) both;
+  }
 }
 
 /* 7. Recessed Frosted Glass Slot (Unfilled bars & tracks) */
@@ -431,12 +513,14 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
   transition: transform 0.26s var(--ios-spring-bounce), opacity 0.18s ease;
 }
 .ios-press:active {
-  transform: scale(0.94);
-  transition-duration: 0.1s;
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.94);
+    transition-duration: 0.1s;
+  }
 }
 
 /* ==========================================================================
-   iOS 26 Keyframe Choreography & Staggered Reveal System
+   iOS 26 Keyframe Choreography & Case-by-Case Reduced Motion Opt-In
    ========================================================================== */
 
 @keyframes iosPageEnter {
@@ -540,7 +624,7 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(0, 6px, 0);
+    transform: translate3d(0, 5px, 0);
   }
 }
 
@@ -568,62 +652,68 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
 }
 
 .animate-fadeIn {
-  animation: iosPageEnter 0.42s var(--ios-emphasized) both;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosPageEnter 0.42s var(--ios-emphasized) both;
+  }
 }
 
 .animate-backdrop {
-  animation: iosBackdropPresent 0.26s var(--ios-standard) both;
+  animation: iosBackdropPresent 0.24s var(--ios-standard) both;
 }
 
 .animate-float {
-  animation: iosFloatGentle 3.6s ease-in-out infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosFloatGentle 3.6s ease-in-out infinite;
+  }
 }
 
 .animate-bounce-down {
-  animation: iosBounceDown 1.4s ease-in-out infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosBounceDown 1.4s ease-in-out infinite;
+  }
 }
 
 .ios-stagger-card {
-  animation: iosCardCascade 0.52s var(--ios-emphasized) both;
-  animation-delay: calc(var(--stagger, 0) * 52ms);
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosCardCascade 0.52s var(--ios-emphasized) both;
+    animation-delay: calc(var(--stagger, 0) * 52ms);
+  }
 }
 
 .ios-dot-bloom {
   transform-box: fill-box;
   transform-origin: center;
-  animation: iosDotSpringIn 0.54s var(--ios-spring-bounce) both;
-  animation-delay: calc(var(--dot-row, 0) * 44ms);
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosDotSpringIn 0.54s var(--ios-spring-bounce) both;
+    animation-delay: calc(var(--dot-row, 0) * 44ms);
+  }
 }
 
 .ios-bar-wave {
   transform-origin: bottom center;
-  animation: iosSlantBarRise 0.52s var(--ios-spring-bounce) both;
-  animation-delay: calc(var(--bar-idx, 0) * 38ms);
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosSlantBarRise 0.52s var(--ios-spring-bounce) both;
+    animation-delay: calc(var(--bar-idx, 0) * 38ms);
+  }
 }
 
 .ios-mascot-entrance {
-  animation: iosMascotSpring 0.62s var(--ios-spring-bounce) 0.12s both;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosMascotSpring 0.62s var(--ios-spring-bounce) 0.12s both;
+  }
 }
 
 .ios-seg-bloom {
   transform-box: fill-box;
   transform-origin: center;
-  animation: iosSegmentDraw 0.46s var(--ios-spring-bounce) both;
-  animation-delay: calc(var(--seg-idx, 0) * 45ms);
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosSegmentDraw 0.46s var(--ios-spring-bounce) both;
+    animation-delay: calc(var(--seg-idx, 0) * 45ms);
+  }
 }
 
 .ios-pop-once {
-  animation: iosPopBounce 0.38s var(--ios-spring-bounce);
-}
-
-/* ==========================================================================
-   Reduced Motion Compliance (Non-Negotiable WCAG / Apple Accessibility Gate)
-   ========================================================================== */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: iosPopBounce 0.38s var(--ios-spring-bounce);
   }
 }

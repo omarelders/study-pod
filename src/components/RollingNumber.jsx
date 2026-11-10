@@ -22,7 +22,7 @@ function DigitReel({ char, delayMs = 0 }) {
   return (
     <span
       className="inline-flex flex-col overflow-hidden align-bottom relative"
-      style={{ height: '1em', lineHeight: 1 }}
+      style={{ height: '1.05em', lineHeight: 1.05 }}
     >
       <span
         className="flex flex-col transition-transform will-change-transform"
@@ -37,7 +37,7 @@ function DigitReel({ char, delayMs = 0 }) {
           <span
             key={n}
             className="flex items-center justify-center select-none"
-            style={{ height: '1em', lineHeight: 1 }}
+            style={{ height: '1.05em', lineHeight: 1.05 }}
           >
             {n}
           </span>
@@ -49,8 +49,7 @@ function DigitReel({ char, delayMs = 0 }) {
 
 /**
  * iOS 26 Rolling Odometer Number / String
- * Splits any formatted string (e.g. "43", "86", "7h 10m", "2,200") into rolling digit reels
- * and static unit/punctuation characters.
+ * Keys digits right-to-left by place value so 9 -> 10 rolls the ones place cleanly.
  */
 export function RollingNumber({
   value,
@@ -60,18 +59,27 @@ export function RollingNumber({
 }) {
   const str = String(value ?? '');
   const chars = str.split('');
-  let digitCounter = 0;
+  const totalDigits = chars.filter((c) => /^[0-9]$/.test(c)).length;
+  let digitSeen = 0;
 
   return (
     <span
-      className={`inline-flex items-baseline tabular-nums ${className}`}
+      className={`inline-flex items-baseline tabular-nums font-sf-rounded ${className}`}
       style={{ lineHeight: 1 }}
       {...rest}
     >
       {chars.map((ch, idx) => {
         const isDigit = /^[0-9]$/.test(ch);
-        const delay = isDigit ? digitCounter++ * staggerMs : 0;
-        return <DigitReel key={`${idx}-${ isDigit ? 'd' : ch }`} char={ch} delayMs={delay} />;
+        const curDigitIdx = isDigit ? digitSeen++ : -1;
+        const placeFromRight = isDigit ? totalDigits - 1 - curDigitIdx : idx;
+        const delay = isDigit ? curDigitIdx * staggerMs : 0;
+        return (
+          <DigitReel
+            key={isDigit ? `d-place-${placeFromRight}` : `sep-${idx}-${ch}`}
+            char={ch}
+            delayMs={delay}
+          />
+        );
       })}
     </span>
   );

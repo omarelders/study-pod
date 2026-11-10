@@ -1,32 +1,67 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Check, Sparkles, Smartphone, ArrowDown } from 'lucide-react';
+import { X, Check, Sparkles, Smartphone, ArrowDown, ArrowUp } from 'lucide-react';
+
+/**
+ * Trigger genuine iOS 17.4+ / iOS 18 / iOS 26 Safari Taptic Engine Haptics
+ * via the native WebKit `<input type="checkbox" switch>` label activation trick,
+ * with `navigator.vibrate` fallback on Android/supported browsers.
+ */
+export function triggerIosHaptic(style = 'light') {
+  try {
+    if (typeof document !== 'undefined') {
+      const label = document.getElementById('ios-haptic-switch-label');
+      if (label) {
+        label.click();
+        return;
+      }
+    }
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(style === 'heavy' ? 16 : 8);
+    }
+  } catch {}
+}
 
 /**
  * Shared iOS 26 UIKit Bottom-Sheet Pull-to-Dismiss Gesture Hook
+ * Supports 1:1 downward finger tracking, upward rubber-band resistance,
+ * flick velocity dismissal (> 0.55 px/ms), and threshold haptic tick.
  */
 export function useIosSheetDrag(onClose) {
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startYRef = useRef(null);
+  const startTimeRef = useRef(0);
+  const crossedThresholdRef = useRef(false);
 
   const onTouchStart = useCallback((e) => {
     if (!e.touches || e.touches.length !== 1) return;
     startYRef.current = e.touches[0].clientY;
+    startTimeRef.current = performance.now();
+    crossedThresholdRef.current = false;
     setIsDragging(true);
   }, []);
 
   const onTouchMove = useCallback((e) => {
     if (startYRef.current === null || !e.touches || e.touches.length !== 1) return;
     const delta = e.touches[0].clientY - startYRef.current;
-    // Rubber-band resistance when pulling upward; 1:1 tracking when pulling down
-    setDragY(delta < 0 ? delta * 0.18 : delta);
+    const nextY = delta < 0 ? delta * 0.16 : delta;
+    if (nextY > 84 && !crossedThresholdRef.current) {
+      crossedThresholdRef.current = true;
+      triggerIosHaptic('light');
+    } else if (nextY <= 84 && crossedThresholdRef.current) {
+      crossedThresholdRef.current = false;
+    }
+    setDragY(nextY);
   }, []);
 
   const onTouchEnd = useCallback(() => {
     if (startYRef.current === null) return;
+    const elapsed = Math.max(1, performance.now() - startTimeRef.current);
+    const velocity = dragY / elapsed; // px per ms
     startYRef.current = null;
     setIsDragging(false);
-    if (dragY > 88) {
+    if (dragY > 84 || (dragY > 34 && velocity > 0.55)) {
+      triggerIosHaptic('light');
       setDragY(0);
       onClose?.();
     } else {
@@ -35,12 +70,14 @@ export function useIosSheetDrag(onClose) {
   }, [dragY, onClose]);
 
   const sheetStyle =
-    dragY !== 0
+    isDragging || dragY !== 0
       ? {
           transform: `translate3d(0, ${dragY.toFixed(1)}px, 0)`,
-          transition: isDragging ? 'none' : 'transform 0.36s var(--ios-spring)',
+          transition: isDragging ? 'none' : 'transform 0.38s var(--ios-spring)',
         }
-      : undefined;
+      : {
+          transition: 'transform 0.38s var(--ios-spring)',
+        };
 
   return {
     dragHandlers: {
@@ -62,6 +99,35 @@ export function isRunningStandalone() {
       window.matchMedia?.('(display-mode: standalone)')?.matches ||
       window.matchMedia?.('(display-mode: fullscreen)')?.matches
   );
+}
+
+/**
+ * Detect iOS browser variant so Share button location is 100% accurate
+ */
+function detectIosBrowserVariant() {
+  if (typeof navigator === 'undefined') {
+    return { name: 'iOS Safari', shareLocation: 'bottom bar', isTopBar: false };
+  }
+  const ua = navigator.userAgent || '';
+  if (/CriOS/i.test(ua)) {
+    return {
+      name: 'Chrome on iPhone',
+      shareLocation: 'top-right address bar',
+      isTopBar: true,
+    };
+  }
+  if (/FxiOS|EdgiOS|OPiOS/i.test(ua)) {
+    return {
+      name: 'iPhone Browser',
+      shareLocation: 'browser toolbar menu',
+      isTopBar: false,
+    };
+  }
+  return {
+    name: 'iOS Safari',
+    shareLocation: 'Safari bottom toolbar',
+    isTopBar: false,
+  };
 }
 
 /**
@@ -145,6 +211,7 @@ export function IosPwaInstallModal({
   isInstalling,
 }) {
   const { dragHandlers, sheetStyle } = useIosSheetDrag(onClose);
+  const browserVariant = detectIosBrowserVariant();
 
   // Lock background scroll while modal sheet is open
   useEffect(() => {
@@ -164,15 +231,21 @@ export function IosPwaInstallModal({
       aria-modal="true"
       aria-labelledby="ios-pwa-install-title"
       data-testid="ios-pwa-install-modal"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/30 backdrop-blur-sm animate-backdrop"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/28 backdrop-blur-sm animate-backdrop"
     >
       {/* Tap backdrop to dismiss */}
-      <div className="flex-1" onClick={onClose} />
+      <div
+        className="flex-1"
+        onClick={() => {
+          triggerIosHaptic('light');
+          onClose?.();
+        }}
+      />
 
-      {/* Native iOS 26 Liquid Glass Action Sheet */}
+      {/* Native iOS 26 Proximity Sheet (AirPods / App Clip Aesthetic) */}
       <div
         style={sheetStyle}
-        className="w-full max-w-[500px] mx-auto rounded-t-[34px] sm:rounded-[34px] sm:mb-5 liquid-glass-sheet ios-safe-sheet px-5 pt-2.5 overflow-hidden relative"
+        className="w-full max-w-[500px] mx-auto rounded-t-[36px] sm:rounded-[36px] sm:mb-5 liquid-glass-sheet ios-safe-sheet px-5 pt-2.5 overflow-hidden relative"
       >
         {/* Ambient Mint & Cyan Specular Glows */}
         <div
@@ -193,7 +266,7 @@ export function IosPwaInstallModal({
 
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3.5 min-w-0">
-              <StudyPodAppIcon size={58} />
+              <StudyPodAppIcon size={60} />
               <div className="min-w-0">
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00B86B]/14 border border-[#00B86B]/25 text-[#008A50] text-[10px] font-extrabold tracking-[0.08em] uppercase mb-1">
                   <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
@@ -213,7 +286,10 @@ export function IosPwaInstallModal({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                triggerIosHaptic('light');
+                onClose?.();
+              }}
               aria-label="Close install prompt"
               data-testid="close-pwa-install-modal"
               className="icon-button w-8 h-8 rounded-full bg-black/[0.06] hover:bg-black/[0.1] text-[#354841] flex items-center justify-center shrink-0 ios-press cursor-pointer"
@@ -250,7 +326,10 @@ export function IosPwaInstallModal({
             <button
               type="button"
               aria-disabled={isInstalling ? 'true' : undefined}
-              onClick={onTriggerNativeInstall}
+              onClick={() => {
+                triggerIosHaptic('heavy');
+                onTriggerNativeInstall?.();
+              }}
               data-testid="pwa-direct-install-btn"
               className="w-full py-3.5 px-5 rounded-full liquid-glass-emerald-orb text-white font-extrabold text-[15px] tracking-[-0.01em] flex items-center justify-center gap-2 ios-press cursor-pointer"
             >
@@ -276,14 +355,14 @@ export function IosPwaInstallModal({
           {installStatusText}
         </p>
 
-        {/* Step-by-Step iOS Safari "Add to Home Screen" Native Card */}
+        {/* Step-by-Step iOS Safari / Chrome "Add to Home Screen" Native Card */}
         <div className="rounded-[24px] bg-white/88 border border-white/95 p-3.5 shadow-[0_6px_22px_-4px_rgba(12,38,30,0.06)] space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <span className="text-[10.5px] font-extrabold tracking-[0.13em] text-[#60756D] uppercase">
               HOW TO INSTALL ON IPHONE (10 SEC)
             </span>
             <span className="text-[10.5px] font-bold text-[#009E5C]">
-              iOS Safari
+              {browserVariant.name}
             </span>
           </div>
 
@@ -297,7 +376,7 @@ export function IosPwaInstallModal({
                 1. Tap the <span className="text-[#007AFF]">Share</span> button
               </div>
               <div className="text-[11.5px] font-medium text-[#687C74]">
-                Located in your iPhone Safari bottom bar
+                Located in your {browserVariant.shareLocation}
               </div>
             </div>
             <span className="px-2 py-0.5 rounded-md bg-[#007AFF]/10 text-[#007AFF] text-[11px] font-extrabold shrink-0">
@@ -342,20 +421,29 @@ export function IosPwaInstallModal({
           </div>
         </div>
 
-        {/* Dismiss / Continue Action + Bouncing Safari Toolbar Pointer */}
+        {/* Dismiss / Continue Action + Bouncing Toolbar Pointer */}
         <div className="mt-3.5 flex flex-col items-center gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              triggerIosHaptic('light');
+              onClose?.();
+            }}
             data-testid="pwa-continue-browser-btn"
-            className="w-full py-3 rounded-full bg-[#141E28] hover:bg-[#1E2C3A] text-white font-extrabold text-[14px] tracking-[-0.01em] shadow-[0_8px_20px_rgba(20,30,40,0.18)] ios-press cursor-pointer"
+            className="w-full py-3 rounded-full bg-black/[0.06] hover:bg-black/[0.09] text-[#141E28] font-extrabold text-[14px] tracking-[-0.01em] ios-press cursor-pointer"
           >
             Got It — Continue to StudyPod
           </button>
 
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#007AFF] pt-0.5 animate-bounce-down">
-            <ArrowDown className="w-3.5 h-3.5 stroke-[2.6]" aria-hidden="true" />
-            <span>Tap Safari&apos;s Share icon below to install</span>
+            {browserVariant.isTopBar ? (
+              <ArrowUp className="w-3.5 h-3.5 stroke-[2.6]" aria-hidden="true" />
+            ) : (
+              <ArrowDown className="w-3.5 h-3.5 stroke-[2.6]" aria-hidden="true" />
+            )}
+            <span>
+              Tap Share in your {browserVariant.shareLocation} to install
+            </span>
           </div>
         </div>
       </div>

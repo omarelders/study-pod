@@ -1,5 +1,6 @@
 import React from 'react';
 import RollingNumber from './RollingNumber.jsx';
+import { triggerIosHaptic } from './IosPwaInstallModal.jsx';
 
 function hexToRgba(hex, alpha = 0.16) {
   if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
@@ -130,18 +131,16 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
                       r={DOT_RADIUS}
                       fill={isFilled ? u1Color : hexToRgba(u1Color, unfilledAlpha)}
                       filter={isFilled ? 'url(#u1Glow)' : undefined}
-                      stroke={isFilled ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.35)'}
-                      strokeWidth="0.6"
+                      stroke={isFilled ? 'rgba(255,255,255,0.52)' : 'rgba(255,255,255,0.48)'}
+                      strokeWidth="0.7"
                       className="transition-colors duration-500 ease-out"
                     />
-                    {isFilled && (
-                      <circle
-                        cx={x - 1.3}
-                        cy={y - 1.4}
-                        r={1.35}
-                        fill="rgba(255, 255, 255, 0.55)"
-                      />
-                    )}
+                    <circle
+                      cx={x - 1.3}
+                      cy={y - 1.4}
+                      r={isFilled ? 1.35 : 1.05}
+                      fill={isFilled ? 'rgba(255, 255, 255, 0.58)' : 'rgba(255, 255, 255, 0.36)'}
+                    />
                   </g>
                 );
               })
@@ -170,18 +169,16 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
                       r={DOT_RADIUS}
                       fill={isFilled ? u2Color : hexToRgba(u2Color, unfilledAlpha)}
                       filter={isFilled ? 'url(#u2Glow)' : undefined}
-                      stroke={isFilled ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.35)'}
-                      strokeWidth="0.6"
+                      stroke={isFilled ? 'rgba(255,255,255,0.52)' : 'rgba(255,255,255,0.48)'}
+                      strokeWidth="0.7"
                       className="transition-colors duration-500 ease-out"
                     />
-                    {isFilled && (
-                      <circle
-                        cx={x - 1.3}
-                        cy={y - 1.4}
-                        r={1.35}
-                        fill="rgba(255, 255, 255, 0.55)"
-                      />
-                    )}
+                    <circle
+                      cx={x - 1.3}
+                      cy={y - 1.4}
+                      r={isFilled ? 1.35 : 1.05}
+                      fill={isFilled ? 'rgba(255, 255, 255, 0.58)' : 'rgba(255, 255, 255, 0.36)'}
+                    />
                   </g>
                 );
               })
@@ -217,7 +214,10 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
           {/* Warm Amber Liquid Glass Yesterday Comparison Pill */}
           <button
             type="button"
-            onClick={() => onToggleYesterday && onToggleYesterday()}
+            onClick={() => {
+              triggerIosHaptic('light');
+              onToggleYesterday && onToggleYesterday();
+            }}
             data-testid="yesterday-pill"
             className="pointer-events-auto mt-3.5 liquid-glass-amber-pill px-3.5 py-1 rounded-full text-[10.5px] font-bold tracking-[0.06em] inline-flex items-center gap-1.5 cursor-pointer"
             title="Toggle between Today and Yesterday's snapshot"
@@ -229,13 +229,21 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
             <span className="text-[#263330]">
               {state?.selectedDayView === 'yesterday' ? 'VIEWING YESTERDAY' : 'YESTERDAY'}
             </span>
-            <span
-              className={`text-[#7E8E88] text-[10px] leading-none transition-transform duration-300 ${
+            <svg
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className={`w-2.5 h-2.5 text-[#7E8E88] transition-transform duration-300 ${
                 state?.selectedDayView === 'yesterday' ? 'rotate-180' : ''
               }`}
             >
-              ↘
-            </span>
+              <path d="M3 3l6 6" />
+              <path d="M9 4v5H4" />
+            </svg>
           </button>
         </div>
       </div>

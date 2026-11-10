@@ -23,6 +23,7 @@ import {
   getCurrentWeekdayIndexMondayFirst,
 } from '../data/studyData.js';
 import { RollingNumber } from './RollingNumber.jsx';
+import { triggerIosHaptic } from './IosPwaInstallModal.jsx';
 
 const GOAL_ICON_MAP = {
   moon: { Icon: Moon, color: '#6E8597' },
@@ -205,6 +206,7 @@ function SplitHalfCircle({
  * 10-Segment 240° Horseshoe Pod Health Gauge (Exact replica of 00:58 - 00:59 in video)
  */
 function PodHealthHorseshoeGauge({ podHealth = 0 }) {
+  const [showHealthInfo, setShowHealthInfo] = useState(false);
   const totalSegments = 10;
   const clampedHealth = Math.max(0, Math.min(100, podHealth));
   // At 86%, 9 of the 10 segments are lit; at 0%, 0 segments are lit
@@ -253,13 +255,26 @@ function PodHealthHorseshoeGauge({ podHealth = 0 }) {
         }}
       />
 
-      {/* Top Label: POD HEALTH ⓘ */}
-      <div className="flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase mb-1">
+      {/* Top Label: POD HEALTH ⓘ (Interactive iOS Popover Toggle) */}
+      <button
+        type="button"
+        onClick={() => {
+          triggerIosHaptic('light');
+          setShowHealthInfo((v) => !v);
+        }}
+        className="icon-button flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase mb-1 cursor-pointer"
+        aria-expanded={showHealthInfo}
+      >
         <span>POD HEALTH</span>
         <span className="w-3.5 h-3.5 rounded-full border border-[#96A7A0]/60 text-[8.5px] font-bold flex items-center justify-center text-[#84968F] leading-none">
           i
         </span>
-      </div>
+      </button>
+      {showHealthInfo && (
+        <div className="mb-2 px-3 py-1.5 rounded-full bg-white/80 border border-white/95 text-[11px] font-semibold text-[#364943] text-center shadow-2xs animate-fadeIn">
+          70% daily goal completion + 30% shared pod sync
+        </div>
+      )}
 
       {/* 240° Horseshoe SVG + Inner Mascot & 86 THRIVING */}
       <div className="relative w-[260px] h-[200px] flex items-center justify-center">
@@ -478,17 +493,14 @@ export function InsightsView({ state, metrics }) {
                 className="flex flex-col items-center gap-2 ios-stagger-card"
               >
                 <div className="h-[34px] flex items-center justify-center">
-                  {both ? (
-                    <SplitHalfCircle
-                      u1={true}
-                      u2={true}
-                      u1Color={u1Color}
-                      u2Color={u2Color}
-                      size={32}
-                    />
-                  ) : (
-                    <span className="w-[30px] h-[30px] rounded-full bg-black/[0.04] border border-white/50" />
-                  )}
+                  <SplitHalfCircle
+                    u1={Boolean(item.u1)}
+                    u2={Boolean(item.u2)}
+                    u1Color={u1Color}
+                    u2Color={u2Color}
+                    size={32}
+                    hideWhenEmpty
+                  />
                 </div>
                 <span
                   className={`text-[11px] font-bold ${

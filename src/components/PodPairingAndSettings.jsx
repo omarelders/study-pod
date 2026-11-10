@@ -18,7 +18,11 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { RING_COLORS } from '../data/studyData.js';
-import { useIosSheetDrag, isRunningStandalone } from './IosPwaInstallModal.jsx';
+import {
+  useIosSheetDrag,
+  isRunningStandalone,
+  triggerIosHaptic,
+} from './IosPwaInstallModal.jsx';
 
 const VISUAL_TYPES = [
   { id: 'slanted-bars', label: 'Slanted Bars (Hours)' },
@@ -56,7 +60,7 @@ const RELATIONSHIP_OPTIONS = [
 ];
 
 const IOS_GROUP_CARD =
-  'liquid-glass-card rounded-[22px] divide-y divide-black/[0.05] overflow-hidden';
+  'liquid-glass-card rounded-[22px] ios-inset-list overflow-hidden';
 
 /**
  * 1. PodPairingModal (Replicates 00:43 - 00:48 in the YouTube Short)
@@ -123,8 +127,14 @@ export function PodPairingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/25 backdrop-blur-sm animate-fadeIn">
-      <div className="flex-1" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/28 backdrop-blur-sm animate-backdrop">
+      <div
+        className="flex-1"
+        onClick={() => {
+          triggerIosHaptic('light');
+          onClose?.();
+        }}
+      />
 
       <div
         style={sheetStyle}
@@ -1107,11 +1117,14 @@ export function SettingsAndOnboardingView({
             </div>
           </button>
 
-          {/* Gentle Reminders Row with Authentic iOS UISwitch */}
-          <div className="px-4 py-3 flex items-center justify-between">
+          {/* Gentle Reminders Row with Native HTML <input type="checkbox" switch> + iOS UISwitch Fallback */}
+          <label
+            htmlFor="gentle-reminders-switch"
+            className="px-4 py-3 flex items-center justify-between cursor-pointer"
+          >
             <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-[7px] bg-[#F59E0B] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                <Bell className="w-4 h-4 stroke-[2.3]" />
+              <div className="w-7 h-7 rounded-[7px] bg-[#F59E0B] text-white flex items-center justify-center shrink-0 shadow-[0_2px_5px_rgba(245,158,11,0.28),inset_0_1px_0.5px_rgba(255,255,255,0.45)]">
+                <Bell className="w-4 h-4 stroke-[2.3]" aria-hidden="true" />
               </div>
               <div>
                 <div className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
@@ -1123,26 +1136,46 @@ export function SettingsAndOnboardingView({
               </div>
             </div>
 
-            {/* Authentic iOS UISwitch */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={gentleReminders}
-              aria-label="Toggle Gentle Reminders"
-              onClick={() =>
-                updatePatch({ gentleReminders: !gentleReminders })
-              }
-              className={`w-[51px] h-[31px] rounded-full p-[2px] transition-colors duration-300 cursor-pointer flex items-center ios-press ${
-                gentleReminders ? 'bg-[#34C759]' : 'bg-[#E5E5EA]'
-              }`}
-            >
-              <span
-                className={`w-[27px] h-[27px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-                  gentleReminders ? 'translate-x-[20px]' : 'translate-x-0'
-                }`}
+            {typeof HTMLInputElement !== 'undefined' &&
+            'switch' in HTMLInputElement.prototype ? (
+              <input
+                id="gentle-reminders-switch"
+                type="checkbox"
+                {...{ switch: '' }}
+                checked={gentleReminders}
+                onChange={(e) =>
+                  updatePatch({ gentleReminders: e.target.checked })
+                }
+                aria-label="Toggle Gentle Reminders"
               />
-            </button>
-          </div>
+            ) : (
+              <span
+                className={`relative w-[51px] h-[31px] rounded-full p-[2px] transition-colors duration-300 flex items-center ios-press ${
+                  gentleReminders ? 'bg-[#34C759]' : 'bg-[#E5E5EA]'
+                }`}
+              >
+                <input
+                  id="gentle-reminders-switch"
+                  type="checkbox"
+                  role="switch"
+                  {...{ switch: '' }}
+                  checked={gentleReminders}
+                  onChange={(e) => {
+                    triggerIosHaptic('light');
+                    updatePatch({ gentleReminders: e.target.checked });
+                  }}
+                  aria-label="Toggle Gentle Reminders"
+                  className="sr-only"
+                />
+                <span
+                  aria-hidden="true"
+                  className={`w-[27px] h-[27px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+                    gentleReminders ? 'translate-x-[20px]' : 'translate-x-0'
+                  }`}
+                />
+              </span>
+            )}
+          </label>
         </div>
       </div>
 

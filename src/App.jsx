@@ -32,6 +32,7 @@ import {
 import {
   IosPwaInstallModal,
   isRunningStandalone,
+  triggerIosHaptic,
 } from './components/IosPwaInstallModal.jsx';
 
 const STORAGE_KEY = 'studypod_state_v2';
@@ -482,162 +483,206 @@ export default function App() {
   };
 
   const anyStudyingNow = state.user1?.studyingNow || state.user2?.studyingNow;
+  const studyingUser = state.user1?.studyingNow ? state.user1 : state.user2;
+  const activeLoggerUser =
+    state.activeLogger === 'user2' ? state.user2 : state.user1;
   const activeColor =
     state.activeLogger === 'user2'
       ? state.user2?.color || '#00A8E8'
       : state.user1?.color || '#00B86B';
+  const anyModalOpen = isQuickLogOpen || isPairingOpen || isPwaInstallOpen;
+
+  const formatLiveActivityTime = (sec = 1500) => {
+    const safe = Math.max(0, Math.floor(sec));
+    const m = Math.floor(safe / 60);
+    const s = safe % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
 
   return (
     <div className="min-h-dvh w-full select-none flex flex-col liquid-canvas-bg relative overflow-x-hidden">
-      {/* Native iOS Top Navigation Bar (Seamless Liquid Glass Controls + Dynamic Island Safe Area) */}
-      {activeTab !== 'onboarding' && (
-        <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-[#D0E9DF]/45 border-b border-white/35">
-          <div className="max-w-[760px] mx-auto sm:px-8 pb-2 ios-safe-header flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              {/* 3D Glossy Liquid Glass User Orb */}
-              <button
-                type="button"
-                onClick={() =>
-                  handleSwitchActiveLogger(
-                    state.activeLogger === 'user1' ? 'user2' : 'user1'
-                  )
-                }
-                aria-label={`Logging as ${
-                  state.activeLogger === 'user2'
-                    ? state.user2?.name
-                    : state.user1?.name
-                }. Tap to switch logger`}
-                style={{
-                  backgroundColor: activeColor,
-                  boxShadow: `0 6px 16px -3px ${activeColor}66, inset 0 2px 1.5px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(0,0,0,0.2)`,
-                }}
-                className="icon-button relative w-[30px] h-[30px] rounded-full border border-white/60 flex items-center justify-center text-white text-[12px] font-extrabold ios-press cursor-pointer"
-                title={`Logging as ${
-                  state.activeLogger === 'user2'
-                    ? state.user2?.name
-                    : state.user1?.name
-                } — Tap to switch`}
-              >
-                <span className="pointer-events-none absolute top-[2px] left-[22%] w-[56%] h-[36%] rounded-full bg-gradient-to-b from-white/60 to-transparent" />
-              </button>
+      {/* Hidden iOS 17.4+ / iOS 18 / iOS 26 Native Switch Haptic Actuator */}
+      <div
+        aria-hidden="true"
+        className="sr-only pointer-events-none opacity-0 fixed -top-10 -left-10"
+      >
+        <input
+          id="ios-haptic-switch"
+          type="checkbox"
+          {...{ switch: '' }}
+          tabIndex={-1}
+        />
+        <label id="ios-haptic-switch-label" htmlFor="ios-haptic-switch" />
+      </div>
 
-              {anyStudyingNow && (
+      {/* App Shell Wrapper with UIKit UIModalPresentationPageSheet Recession Physics */}
+      <div
+        className={`flex-1 flex flex-col w-full ios-app-shell ${
+          anyModalOpen ? 'ios-app-shell-recessed' : ''
+        }`}
+      >
+        {/* Native iOS Top Navigation Bar (Progressive Blur + Dynamic Island Safe Area) */}
+        {activeTab !== 'onboarding' && (
+          <header className="sticky top-0 z-30 w-full ios-nav-blur">
+            <div className="max-w-[760px] mx-auto sm:px-8 pb-2 ios-safe-header flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {/* 3D Glossy Liquid Glass User Orb with Active Initial */}
                 <button
                   type="button"
-                  onClick={() => setIsQuickLogOpen(true)}
-                  className="liquid-glass-pill pl-2.5 pr-3 py-1 rounded-full text-[11.5px] font-bold text-[#008A50] flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => {
+                    triggerIosHaptic('light');
+                    handleSwitchActiveLogger(
+                      state.activeLogger === 'user1' ? 'user2' : 'user1'
+                    );
+                  }}
+                  aria-label={`Logging as ${
+                    activeLoggerUser?.name || 'User'
+                  }. Tap to switch logger`}
+                  style={{
+                    backgroundColor: activeColor,
+                    boxShadow: `0 6px 16px -3px ${activeColor}66, inset 0 2px 1.5px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+                  }}
+                  className="icon-button relative w-[31px] h-[31px] rounded-full border border-white/65 flex items-center justify-center text-white text-[12.5px] font-extrabold font-sf-rounded ios-press cursor-pointer"
+                  title={`Logging as ${
+                    activeLoggerUser?.name || 'User'
+                  } — Tap to switch`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-[#00C472] animate-pulse shadow-[0_0_8px_#00C472]" />
-                  <span className="tabular-nums">
-                    {Math.floor(
-                      ((state.user1?.studyingNow
-                        ? state.user1.timerRemainingSec
-                        : state.user2.timerRemainingSec) || 1500) / 60
-                    )}
-                    m Focus
+                  <span className="pointer-events-none absolute top-[2px] left-[22%] w-[56%] h-[36%] rounded-full bg-gradient-to-b from-white/60 to-transparent" />
+                  <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
+                    {(activeLoggerUser?.name || 'O').charAt(0).toUpperCase()}
                   </span>
                 </button>
-              )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              {/* Native iOS PWA Install Pill (Visible when running in browser) */}
-              {!isStandalone && (
+                {/* Native iOS Dynamic Island / Live Activity Focus Capsule */}
+                {anyStudyingNow && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerIosHaptic('light');
+                      setIsQuickLogOpen(true);
+                    }}
+                    className="pl-2.5 pr-3 py-1 rounded-full bg-[#0B1512]/92 backdrop-blur-xl border border-white/15 shadow-[0_10px_26px_rgba(0,0,0,0.22),inset_0_1px_0.5px_rgba(255,255,255,0.22)] text-[11.5px] font-bold text-white flex items-center gap-2 ios-press cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse shadow-[0_0_8px_#34D399]" />
+                    <span className="text-white/80 font-semibold text-[11px] max-w-[68px] truncate">
+                      {studyingUser?.name || 'Focus'}
+                    </span>
+                    <span className="tabular-nums font-sf-rounded text-[#4ADE80] font-extrabold">
+                      {formatLiveActivityTime(studyingUser?.timerRemainingSec)}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Native iOS PWA Install Pill (Visible when running in browser) */}
+                {!isStandalone && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerIosHaptic('light');
+                      setIsPwaInstallOpen(true);
+                    }}
+                    data-testid="header-pwa-install-pill"
+                    className="liquid-glass-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#007AFF] cursor-pointer"
+                    title="Install StudyPod iPhone App"
+                  >
+                    <Download
+                      className="w-[13.5px] h-[13.5px] stroke-[2.5]"
+                      aria-hidden="true"
+                    />
+                    <span>Get App</span>
+                  </button>
+                )}
+
+                {/* Liquid Glass Streak Capsule */}
                 <button
                   type="button"
-                  onClick={() => setIsPwaInstallOpen(true)}
-                  data-testid="header-pwa-install-pill"
-                  className="liquid-glass-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#007AFF] cursor-pointer"
-                  title="Install StudyPod iPhone App"
+                  onClick={() => {
+                    triggerIosHaptic('light');
+                    setActiveTab('insights');
+                  }}
+                  className="liquid-glass-pill flex items-center gap-1.5 px-3 py-1 rounded-full cursor-pointer"
+                  title="Current Study Pod Streak"
                 >
-                  <Download
-                    className="w-[13.5px] h-[13.5px] stroke-[2.5]"
+                  <Flame
+                    className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B] drop-shadow-[0_2px_4px_rgba(245,158,11,0.35)]"
                     aria-hidden="true"
                   />
-                  <span>Get App</span>
+                  <RollingNumber
+                    value={state.streak}
+                    className="text-[13.5px] font-extrabold text-[#364943]"
+                  />
                 </button>
-              )}
 
-              {/* Liquid Glass Streak Capsule */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('insights')}
-                className="liquid-glass-pill flex items-center gap-1.5 px-3 py-1 rounded-full cursor-pointer"
-                title="Current Study Pod Streak"
-              >
-                <Flame
-                  className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B] drop-shadow-[0_2px_4px_rgba(245,158,11,0.35)]"
-                  aria-hidden="true"
-                />
-                <RollingNumber
-                  value={state.streak}
-                  className="text-[13.5px] font-extrabold text-[#364943]"
-                />
-              </button>
-
-              {/* Liquid Glass Menu Squircle */}
-              <button
-                type="button"
-                aria-label="Pod Settings"
-                onClick={() =>
-                  setActiveTab(activeTab === 'you' ? 'together' : 'you')
-                }
-                className="icon-button liquid-glass-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
-                title="Pod Settings"
-              >
-                <Menu className="w-[16px] h-[16px] stroke-[2.3]" aria-hidden="true" />
-              </button>
+                {/* Liquid Glass Menu Squircle */}
+                <button
+                  type="button"
+                  aria-label="Pod Settings"
+                  onClick={() => {
+                    triggerIosHaptic('light');
+                    setActiveTab(activeTab === 'you' ? 'together' : 'you');
+                  }}
+                  className="icon-button liquid-glass-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
+                  title="Pod Settings"
+                >
+                  <Menu
+                    className="w-[16px] h-[16px] stroke-[2.3]"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
             </div>
-          </div>
-        </header>
-      )}
+          </header>
+        )}
 
-      {/* Main Content Area with Keyed iOS 26 View Transition */}
-      <main className="flex-1 w-full max-w-[760px] mx-auto sm:px-4 ios-safe-main">
-        <div key={activeTab} className="animate-fadeIn">
-          {activeTab === 'together' && (
-            <>
-              <HeroGauge
+        {/* Main Content Area with Keyed iOS 26 View Transition */}
+        <main className="flex-1 w-full max-w-[760px] mx-auto sm:px-4 ios-safe-main">
+          <div key={activeTab} className="animate-fadeIn">
+            {activeTab === 'together' && (
+              <>
+                <HeroGauge
+                  state={state}
+                  metrics={metrics}
+                  onToggleYesterday={handleToggleYesterday}
+                  onOpenPairing={() => setIsPairingOpen(true)}
+                />
+                <StudyBentoGrid
+                  state={state}
+                  metrics={metrics}
+                  onSelectGoal={handleSelectGoal}
+                  onQuickStep={handleQuickStep}
+                  onSwitchActiveLogger={handleSwitchActiveLogger}
+                  onOpenTimer={() => {
+                    setSelectedGoalId('study-hours');
+                    setIsQuickLogOpen(true);
+                  }}
+                />
+              </>
+            )}
+
+            {activeTab === 'insights' && (
+              <InsightsView state={state} metrics={metrics} />
+            )}
+
+            {(activeTab === 'you' || activeTab === 'onboarding') && (
+              <SettingsAndOnboardingView
                 state={state}
-                metrics={metrics}
-                onToggleYesterday={handleToggleYesterday}
+                mode={activeTab === 'onboarding' ? 'onboarding' : 'settings'}
+                backendStatus={backendStatus}
+                onRefreshBackendStatus={refreshBackendStatus}
+                onUpdateState={(next) => commitState(next, true)}
+                onResetDemo={handleResetDemo}
+                onResetCleanZero={handleResetCleanZero}
+                onStartFreshOnboarding={handleStartFreshOnboarding}
                 onOpenPairing={() => setIsPairingOpen(true)}
+                onOpenPwaInstall={() => setIsPwaInstallOpen(true)}
+                onCloseOnboarding={() => setActiveTab('together')}
               />
-              <StudyBentoGrid
-                state={state}
-                metrics={metrics}
-                onSelectGoal={handleSelectGoal}
-                onQuickStep={handleQuickStep}
-                onSwitchActiveLogger={handleSwitchActiveLogger}
-                onOpenTimer={() => {
-                  setSelectedGoalId('study-hours');
-                  setIsQuickLogOpen(true);
-                }}
-              />
-            </>
-          )}
-
-          {activeTab === 'insights' && (
-            <InsightsView state={state} metrics={metrics} />
-          )}
-
-          {(activeTab === 'you' || activeTab === 'onboarding') && (
-            <SettingsAndOnboardingView
-              state={state}
-              mode={activeTab === 'onboarding' ? 'onboarding' : 'settings'}
-              backendStatus={backendStatus}
-              onRefreshBackendStatus={refreshBackendStatus}
-              onUpdateState={(next) => commitState(next, true)}
-              onResetDemo={handleResetDemo}
-              onResetCleanZero={handleResetCleanZero}
-              onStartFreshOnboarding={handleStartFreshOnboarding}
-              onOpenPairing={() => setIsPairingOpen(true)}
-              onOpenPwaInstall={() => setIsPwaInstallOpen(true)}
-              onCloseOnboarding={() => setActiveTab('together')}
-            />
-          )}
-        </div>
-      </main>
+            )}
+          </div>
+        </main>
+      </div>
 
       {/* iOS 26 Floating Liquid Glass Tab Bar + Physical Sliding Droplet + 3D Emerald Sphere */}
       {activeTab !== 'onboarding' && (
@@ -678,7 +723,10 @@ export default function App() {
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setActiveTab(id)}
+                    onClick={() => {
+                      triggerIosHaptic('light');
+                      setActiveTab(id);
+                    }}
                     aria-current={isActive ? 'page' : undefined}
                     className="relative z-10 py-1.5 rounded-full flex flex-col items-center justify-center gap-0.5 ios-press cursor-pointer transition-colors duration-250"
                   >
@@ -709,6 +757,7 @@ export default function App() {
               type="button"
               aria-label="Log Study Progress and Focus Timer"
               onClick={() => {
+                triggerIosHaptic('heavy');
                 setSelectedGoalId(null);
                 setIsQuickLogOpen(true);
               }}

@@ -10,9 +10,11 @@ import {
   Award,
   Layers,
   Check,
+  Plus,
 } from 'lucide-react';
 import { formatGoalValue, getFormattedDayLabel } from '../data/studyData.js';
 import { RollingNumber } from './RollingNumber.jsx';
+import { triggerIosHaptic } from './IosPwaInstallModal.jsx';
 
 function hexToRgba(hex, alpha = 0.14) {
   if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
@@ -70,12 +72,13 @@ function getDisplayCardTitle(goal) {
 }
 
 const LIQUID_CARD_CLASS =
-  'liquid-glass-card p-4.5 cursor-pointer select-none';
+  'liquid-glass-card p-4 sm:p-4.5 cursor-pointer select-none';
 
 export function StudyBentoGrid({
   state,
   metrics,
   onSelectGoal,
+  onQuickStep,
   onSwitchActiveLogger,
 }) {
   const u1Color = state?.user1?.color || '#00B86B';
@@ -179,7 +182,7 @@ export function StudyBentoGrid({
       </div>
 
       {/* Daily Study Liquid Glass Bento Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-3.5">
         {dailyGoals.map((goal, cardIdx) => {
           const u1Val = getEffectiveVal(goal, 'user1');
           const u2Val = getEffectiveVal(goal, 'user2');
@@ -193,7 +196,10 @@ export function StudyBentoGrid({
             return (
               <div
                 key={goal.id}
-                onClick={() => onSelectGoal && onSelectGoal(goal.id)}
+                onClick={() => {
+                  triggerIosHaptic('light');
+                  onSelectGoal && onSelectGoal(goal.id);
+                }}
                 data-testid={`goal-card-${goal.id}`}
                 style={{ '--stagger': cardIdx }}
                 className={`col-span-2 ios-stagger-card ${LIQUID_CARD_CLASS}`}
@@ -208,12 +214,29 @@ export function StudyBentoGrid({
                   style={{ backgroundColor: u2Color }}
                 />
 
-                {/* Clean Top-Left Header */}
-                <div className="flex items-center gap-1.5">
-                  <GoalHeaderIcon iconName={goal.icon} />
-                  <span className="text-[13px] font-bold text-[#1B2724]">
-                    {cardTitle}
-                  </span>
+                {/* Clean Top-Left Header + 1-Tap Quick-Step Pill */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <GoalHeaderIcon iconName={goal.icon} />
+                    <span className="text-[13px] font-bold text-[#1B2724]">
+                      {cardTitle}
+                    </span>
+                  </div>
+                  {!isYesterday && onQuickStep && (
+                    <button
+                      type="button"
+                      aria-label={`Quick log ${cardTitle}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerIosHaptic('light');
+                        onQuickStep(goal.id);
+                      }}
+                      className="icon-button w-6 h-6 rounded-full bg-white/75 border border-white/95 shadow-2xs flex items-center justify-center text-[#243630] active:scale-90 transition cursor-pointer"
+                      title={`Quick log +${goal.step || 1} ${goal.unit || ''}`}
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
 
                 {/* 8 Glossy Liquid Slanted Bars Left + Moon Divider + 8 Glossy Slanted Bars Right */}
@@ -300,7 +323,10 @@ export function StudyBentoGrid({
           return (
             <div
               key={goal.id}
-              onClick={() => onSelectGoal && onSelectGoal(goal.id)}
+              onClick={() => {
+                triggerIosHaptic('light');
+                onSelectGoal && onSelectGoal(goal.id);
+              }}
               data-testid={`goal-card-${goal.id}`}
               style={{ '--stagger': cardIdx }}
               className={`col-span-1 flex flex-col justify-between min-h-[166px] ios-stagger-card ${LIQUID_CARD_CLASS}`}
@@ -313,12 +339,29 @@ export function StudyBentoGrid({
                 }}
               />
 
-              {/* Clean Card Header */}
-              <div className="flex items-center gap-1.5 min-w-0">
-                <GoalHeaderIcon iconName={goal.icon} />
-                <span className="text-[13px] font-bold text-[#1B2724] truncate">
-                  {cardTitle}
-                </span>
+              {/* Clean Card Header + 1-Tap Quick-Step Button */}
+              <div className="flex items-center justify-between gap-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <GoalHeaderIcon iconName={goal.icon} />
+                  <span className="text-[13px] font-bold text-[#1B2724] truncate">
+                    {cardTitle}
+                  </span>
+                </div>
+                {!isYesterday && onQuickStep && (
+                  <button
+                    type="button"
+                    aria-label={`Quick log ${cardTitle}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerIosHaptic('light');
+                      onQuickStep(goal.id);
+                    }}
+                    className="icon-button w-5.5 h-5.5 rounded-full bg-white/75 border border-white/95 shadow-2xs flex items-center justify-center text-[#243630] shrink-0 active:scale-90 transition cursor-pointer"
+                    title={`Quick log +${goal.step || 1} ${goal.unit || ''}`}
+                  >
+                    <Plus className="w-3 h-3 stroke-[2.6]" aria-hidden="true" />
+                  </button>
+                )}
               </div>
 
               {/* Card Center Graphic */}
