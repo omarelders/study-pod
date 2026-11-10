@@ -7,8 +7,8 @@
   "display": "standalone",
   "display_override": ["standalone"],
   "orientation": "portrait",
-  "background_color": "#D0E9DF",
-  "theme_color": "#D0E9DF",
+  "background_color": "#E6F2ED",
+  "theme_color": "#E6F2ED",
   "description": "2-Person Study Accountability & Focus Tracker with iOS Liquid Glass UI",
   "icons": [
     {

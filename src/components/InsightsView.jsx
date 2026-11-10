@@ -252,15 +252,6 @@ function PodHealthHorseshoeGauge({ podHealth = 0, lang = 'en' }) {
 
   return (
     <div className="relative flex flex-col items-center pt-1 pb-2">
-      {/* Subtle Ambient Emerald Aura Behind Horseshoe */}
-      <div
-        className="pointer-events-none absolute top-6 w-[220px] h-[160px] rounded-full blur-2xl opacity-45"
-        style={{
-          background:
-            'radial-gradient(circle, rgba(0, 200, 95, 0.28) 0%, rgba(255,255,255,0) 72%)',
-        }}
-      />
-
       {/* Top Label: POD HEALTH ⓘ (Interactive iOS Popover Toggle) */}
       <button
         type="button"

@@ -669,7 +669,7 @@ export default function App() {
       {/* Hidden iOS 17.4+ / iOS 18 / iOS 26 Native Switch Haptic Actuator */}
       <div
         aria-hidden="true"
-        className="sr-only pointer-events-none opacity-0 fixed -top-10 -left-10"
+        className="sr-only pointer-events-none opacity-0"
       >
         <input
           id="ios-haptic-switch"
@@ -686,15 +686,15 @@ export default function App() {
           anyModalOpen ? 'ios-app-shell-recessed' : ''
         }`}
       >
-        {/* Native iOS Top Navigation Bar (Floating Liquid Glass Chrome + Safe Area) */}
+        {/* Top Utility Row (Normal flow div without sticky/backdrop-filter so iOS Safari never adds a top blur bar) */}
         {activeTab !== 'onboarding' && (
-          <header className="sticky top-0 z-30 w-full ios-nav-blur">
+          <div className="relative z-20 w-full">
             <div
               dir="ltr"
               className="max-w-[760px] mx-auto sm:px-8 pb-2 ios-safe-header flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5">
-                {/* 3D Glossy Liquid Glass User Orb with Active Initial */}
+                {/* 3D Glossy User Orb with Active Initial */}
                 <button
                   type="button"
                   onClick={() => {
@@ -708,15 +708,16 @@ export default function App() {
                   }. Tap to switch logger`}
                   style={{
                     backgroundColor: activeColor,
-                    boxShadow: `0 6px 16px -3px ${activeColor}66, inset 0 2px 1.5px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+                    boxShadow:
+                      '0 2px 6px rgba(10,36,28,0.16), inset 0 1.5px 1px rgba(255,255,255,0.72), inset 0 -2px 3px rgba(0,0,0,0.18)',
                   }}
-                  className="icon-button relative w-[31px] h-[31px] rounded-full border border-white/65 flex items-center justify-center text-white text-[12.5px] font-extrabold font-sf-rounded ios-press cursor-pointer"
+                  className="icon-button relative w-[31px] h-[31px] rounded-full border border-white/75 flex items-center justify-center text-white text-[12.5px] font-extrabold font-sf-rounded ios-press cursor-pointer"
                   title={`Logging as ${
                     activeLoggerUser?.name || 'User'
                   } — Tap to switch`}
                 >
-                  <span className="pointer-events-none absolute top-[2px] left-[22%] w-[56%] h-[36%] rounded-full bg-gradient-to-b from-white/60 to-transparent" />
-                  <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
+                  <span className="pointer-events-none absolute top-[2px] left-[22%] w-[56%] h-[36%] rounded-full bg-gradient-to-b from-white/55 to-transparent" />
+                  <span className="relative z-10">
                     {(activeLoggerUser?.name || 'O').charAt(0).toUpperCase()}
                   </span>
                 </button>
@@ -729,10 +730,10 @@ export default function App() {
                       triggerIosHaptic('light');
                       setIsQuickLogOpen(true);
                     }}
-                    className="pl-2.5 pr-3 py-1 rounded-full bg-[#0B1512]/92 backdrop-blur-xl border border-white/15 shadow-[0_10px_26px_rgba(0,0,0,0.22),inset_0_1px_0.5px_rgba(255,255,255,0.22)] text-[11.5px] font-bold text-white flex items-center gap-2 ios-press cursor-pointer"
+                    className="pl-2.5 pr-3 py-1 rounded-full bg-[#0F1E19] border border-white/15 shadow-[0_4px_12px_rgba(0,0,0,0.14),inset_0_1px_0.5px_rgba(255,255,255,0.2)] text-[11.5px] font-bold text-white flex items-center gap-2 ios-press cursor-pointer"
                   >
-                    <span className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse shadow-[0_0_8px_#34D399]" />
-                    <span className="text-white/80 font-semibold text-[11px] max-w-[68px] truncate">
+                    <span className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse" />
+                    <span className="text-white/85 font-semibold text-[11px] max-w-[68px] truncate">
                       {studyingUser?.name || 'Focus'}
                     </span>
                     <span className="tabular-nums font-sf-rounded text-[#4ADE80] font-extrabold">
@@ -752,7 +753,7 @@ export default function App() {
                       setIsPwaInstallOpen(true);
                     }}
                     data-testid="header-pwa-install-pill"
-                    className="liquid-glass-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#007AFF] cursor-pointer"
+                    className="ios-top-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#007AFF] cursor-pointer"
                     title="Install StudyPod iPhone App"
                   >
                     <Download
@@ -776,7 +777,7 @@ export default function App() {
                       ? 'Switch language to English'
                       : 'تغيير اللغة إلى العربية'
                   }
-                  className="liquid-glass-pill flex items-center justify-center px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#1E332C] cursor-pointer"
+                  className="ios-top-pill flex items-center justify-center px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#1E332C] cursor-pointer"
                   title={
                     lang === 'ar'
                       ? 'Switch to English'
@@ -786,18 +787,18 @@ export default function App() {
                   <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
                 </button>
 
-                {/* Liquid Glass Streak Capsule */}
+                {/* Streak Capsule */}
                 <button
                   type="button"
                   onClick={() => {
                     triggerIosHaptic('light');
                     setActiveTab('insights');
                   }}
-                  className="liquid-glass-pill flex items-center gap-1.5 px-3 py-1 rounded-full cursor-pointer"
+                  className="ios-top-pill flex items-center gap-1.5 px-3 py-1 rounded-full cursor-pointer"
                   title="Current Study Pod Streak"
                 >
                   <Flame
-                    className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B] drop-shadow-[0_2px_4px_rgba(245,158,11,0.35)]"
+                    className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B]"
                     aria-hidden="true"
                   />
                   <RollingNumber
@@ -806,7 +807,7 @@ export default function App() {
                   />
                 </button>
 
-                {/* Liquid Glass Menu Squircle */}
+                {/* Menu Squircle */}
                 <button
                   type="button"
                   aria-label="Pod Settings"
@@ -814,7 +815,7 @@ export default function App() {
                     triggerIosHaptic('light');
                     setActiveTab(activeTab === 'you' ? 'together' : 'you');
                   }}
-                  className="icon-button liquid-glass-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
+                  className="icon-button ios-top-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
                   title="Pod Settings"
                 >
                   <Menu
@@ -824,7 +825,7 @@ export default function App() {
                 </button>
               </div>
             </div>
-          </header>
+          </div>
         )}
 
         {/* Main Content Area with Keyed iOS 26 View Transition */}

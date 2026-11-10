@@ -73,14 +73,6 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
       className="relative flex flex-col items-center select-none pt-1 pb-2"
       aria-label="Goals Reached Today Gauge"
     >
-      {/* Subtle Ambient Chromatic Glow Behind the Gauge */}
-      <div
-        className="pointer-events-none absolute top-4 w-[280px] h-[150px] rounded-full blur-2xl opacity-55"
-        style={{
-          background: `linear-gradient(90deg, ${hexToRgba(u1Color, 0.28)} 0%, rgba(255,255,255,0.5) 50%, ${hexToRgba(u2Color, 0.28)} 100%)`,
-        }}
-      />
-
       <div
         dir="ltr"
         className="relative w-full max-w-[320px] h-[195px] flex items-center justify-center"

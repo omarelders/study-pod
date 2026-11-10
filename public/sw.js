@@ -1,7 +1,5 @@
-const CACHE_NAME = 'studypod-pwa-v2';
+const CACHE_NAME = 'studypod-pwa-v4';
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/apple-touch-icon.png',
   '/icon-192.png',
@@ -39,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
 
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((response) => {
         if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();

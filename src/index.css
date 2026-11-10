@@ -31,7 +31,7 @@
     -webkit-touch-callout: none;
     -webkit-text-size-adjust: 100%;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    background-color: #DCEEE6;
+    background-color: #E6F2ED;
     color: #0F1A24;
     overscroll-behavior-y: none;
     overflow-wrap: anywhere;
@@ -105,11 +105,30 @@ input[type="checkbox"][switch]:focus-visible {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Transparent Floating Top Bar (lets Liquid Glass pills float seamlessly without a rectangular blur strip) */
+/* Transparent Top Bar + Crisp Non-Blurred Top Pills (prevents iOS Safari top status-bar blur pocket) */
 .ios-nav-blur {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+.ios-top-pill {
+  position: relative;
+  background: linear-gradient(180deg, #F9FCFB 0%, #EFF6F3 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 3px 10px -2px rgba(12, 38, 30, 0.06),
+    inset 0 1px 0.5px 0 #FFFFFF;
+  transition: transform 0.22s var(--ios-spring-bounce);
+}
+
+.ios-top-pill:active {
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.93);
+    transition-duration: 0.1s;
+  }
 }
 
 /* Native UIModalPresentationPageSheet Background Recession Physics */
@@ -119,7 +138,6 @@ input[type="checkbox"][switch]:focus-visible {
     border-radius 0.44s var(--ios-spring),
     filter 0.44s var(--ios-spring);
   transform-origin: center top;
-  will-change: transform;
 }
 
 .ios-app-shell-recessed {
@@ -198,28 +216,10 @@ input[type="range"].ios-slider:active::-webkit-slider-thumb {
    iOS 26 "Liquid Glass" (Solarium) Optical Material System + Motion Physics
    ========================================================================== */
 
-/* 1. Living Atmospheric Canvas Behind the Glass (GPU-pinned for 120Hz iOS ProMotion) */
+/* 1. Uniform Atmospheric Canvas Behind the Glass (no fixed top radial glow so iOS status bar blends seamlessly) */
 .liquid-canvas-bg {
   position: relative;
-  isolation: isolate;
-  background-color: #DCEEE6;
-}
-
-.liquid-canvas-bg::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  transform: translateZ(0);
-  background-color: #DCEEE6;
-  background-image:
-    radial-gradient(65% 40% at 50% 4%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 100%),
-    radial-gradient(48% 38% at 15% 32%, rgba(0, 196, 114, 0.14) 0%, rgba(0, 196, 114, 0) 100%),
-    radial-gradient(50% 40% at 86% 36%, rgba(0, 172, 238, 0.15) 0%, rgba(0, 172, 238, 0) 100%),
-    radial-gradient(55% 45% at 22% 78%, rgba(0, 196, 114, 0.12) 0%, rgba(0, 196, 114, 0) 100%),
-    radial-gradient(55% 45% at 82% 82%, rgba(0, 172, 238, 0.13) 0%, rgba(0, 172, 238, 0) 100%),
-    linear-gradient(180deg, #DCEEE6 0%, #E3F1EC 48%, #EAF3F0 100%);
+  background-color: #E6F2ED;
 }
 
 /* 2. Primary Liquid Glass Card (Sculpted Optical Slab + Directional Specular Rim) */
