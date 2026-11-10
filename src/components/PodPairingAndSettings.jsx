@@ -15,8 +15,10 @@ import {
   Sliders,
   RefreshCw,
   QrCode,
+  Smartphone,
 } from 'lucide-react';
 import { RING_COLORS } from '../data/studyData.js';
+import { useIosSheetDrag, isRunningStandalone } from './IosPwaInstallModal.jsx';
 
 const VISUAL_TYPES = [
   { id: 'slanted-bars', label: 'Slanted Bars (Hours)' },
@@ -70,6 +72,7 @@ export function PodPairingModal({
   const [view, setView] = useState('code'); // 'code' | 'enter' | 'invite'
   const [copied, setCopied] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const { dragHandlers, sheetStyle } = useIosSheetDrag(onClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -96,6 +99,20 @@ export function PodPairingModal({
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    try {
+      if (
+        typeof navigator?.share === 'function' &&
+        window.matchMedia?.('(pointer: coarse)')?.matches
+      ) {
+        await navigator.share({
+          title: 'Join my StudyPod',
+          text: `Join my StudyPod accountability ring with code ${podCode}`,
+          url: window.location.origin,
+        });
+      }
+    } catch {
+      // user canceled native share sheet
+    }
   };
 
   const handleJoinSubmit = async (e) => {
@@ -109,9 +126,17 @@ export function PodPairingModal({
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/25 backdrop-blur-sm animate-fadeIn">
       <div className="flex-1" onClick={onClose} />
 
-      <div className="w-full max-w-[540px] mx-auto rounded-t-[32px] sm:rounded-[32px] sm:mb-6 bg-[#F4F7F5]/95 backdrop-blur-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.15)] border border-white/80 p-4 sm:p-5 pb-7 relative ios-sheet-enter">
-        {/* Authentic iOS Sheet Grabber Pill */}
-        <div className="w-9 h-[5px] rounded-full bg-black/15 mx-auto mb-3.5" />
+      <div
+        style={sheetStyle}
+        className="w-full max-w-[540px] mx-auto rounded-t-[32px] sm:rounded-[32px] sm:mb-6 bg-[#F4F7F5]/95 backdrop-blur-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.15)] border border-white/80 p-4 sm:p-5 ios-safe-sheet relative ios-sheet-enter"
+      >
+        {/* Authentic iOS Sheet Grabber Pill (Swipe Down to Dismiss) */}
+        <div
+          {...dragHandlers}
+          className="pt-1 pb-2.5 -mt-1 touch-none cursor-grab active:cursor-grabbing"
+        >
+          <div className="w-9 h-[5px] rounded-full bg-black/18 mx-auto" />
+        </div>
 
         {/* Sub-view Switcher Pills with Physical Sliding Indicator */}
         <div className="relative grid grid-cols-3 bg-[#E3EBE7] p-1 rounded-full max-w-[330px] mx-auto mb-3.5 overflow-hidden">
@@ -386,6 +411,7 @@ export function SettingsAndOnboardingView({
   onResetCleanZero,
   onStartFreshOnboarding,
   onOpenPairing,
+  onOpenPwaInstall,
   onCloseOnboarding,
 }) {
   const [wizardOpen, setWizardOpen] = useState(mode === 'onboarding');
@@ -965,7 +991,7 @@ export function SettingsAndOnboardingView({
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#0EA5E9] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                <QrCode className="w-4 h-4 stroke-[2.2]" />
+                <QrCode className="w-4 h-4 stroke-[2.2]" aria-hidden="true" />
               </div>
               <span className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
                 View Pod Details
@@ -973,6 +999,35 @@ export function SettingsAndOnboardingView({
             </div>
             <div className="flex items-center gap-1 text-[#8A9B94]">
               <span className="text-[13px] font-medium">Share Code</span>
+              <span className="text-[17px] leading-none font-semibold">›</span>
+            </div>
+          </button>
+
+          {/* Row 4: Install iPhone Home Screen App (PWA) */}
+          <button
+            type="button"
+            onClick={() => onOpenPwaInstall?.()}
+            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-[7px] bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Smartphone className="w-4 h-4 stroke-[2.2]" aria-hidden="true" />
+              </div>
+              <div>
+                <div className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
+                  iPhone Home Screen App
+                </div>
+                <div className="text-[11px] font-medium text-[#6E827A]">
+                  {isRunningStandalone()
+                    ? 'Running in full-screen native PWA mode'
+                    : 'Install full-screen Liquid Glass app on iPhone'}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-[#007AFF] shrink-0">
+              <span className="text-[12.5px] font-bold">
+                {isRunningStandalone() ? 'Installed' : 'Install'}
+              </span>
               <span className="text-[17px] leading-none font-semibold">›</span>
             </div>
           </button>

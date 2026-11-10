@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users,
   BarChart2,
@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Flame,
   Menu,
+  Download,
 } from 'lucide-react';
 import {
   createDefaultState,
@@ -28,8 +29,13 @@ import {
   PodPairingModal,
   SettingsAndOnboardingView,
 } from './components/PodPairingAndSettings.jsx';
+import {
+  IosPwaInstallModal,
+  isRunningStandalone,
+} from './components/IosPwaInstallModal.jsx';
 
 const STORAGE_KEY = 'studypod_state_v2';
+const PWA_PROMPT_DISMISSED_KEY = 'studypod_pwa_prompt_dismissed_v1';
 
 function enrichStateWithLiveProgress(nextState) {
   const m = computePodMetrics(nextState);
@@ -78,12 +84,114 @@ export default function App() {
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [isPairingOpen, setIsPairingOpen] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(() => isRunningStandalone());
+  const [isPwaInstallOpen, setIsPwaInstallOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (isRunningStandalone()) return false;
+    try {
+      return sessionStorage.getItem(PWA_PROMPT_DISMISSED_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const [canNativePrompt, setCanNativePrompt] = useState(
+    () =>
+      typeof Navigator !== 'undefined' &&
+      typeof Navigator.prototype?.install === 'function'
+  );
+  const [isInstallingPwa, setIsInstallingPwa] = useState(false);
+  const [installStatusText, setInstallStatusText] = useState('');
+  const deferredInstallPromptRef = useRef(undefined);
+
   const [backendStatus, setBackendStatus] = useState({
     ok: true,
     backend: 'checking',
     tableReady: false,
     message: 'Checking cloud sync...',
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const supportsWebInstall =
+      typeof Navigator !== 'undefined' &&
+      typeof Navigator.prototype?.install === 'function';
+    if (supportsWebInstall) {
+      setCanNativePrompt(true);
+    }
+
+    const onBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      deferredInstallPromptRef.current = event;
+      if (!supportsWebInstall) {
+        setCanNativePrompt(true);
+      }
+    };
+
+    const mql = window.matchMedia?.('(display-mode: standalone)');
+    const onDisplayModeChange = () => {
+      const standalone = isRunningStandalone();
+      setIsStandalone(standalone);
+      if (standalone) setIsPwaInstallOpen(false);
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    mql?.addEventListener?.('change', onDisplayModeChange);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      mql?.removeEventListener?.('change', onDisplayModeChange);
+    };
+  }, []);
+
+  const handleClosePwaInstall = useCallback(() => {
+    setIsPwaInstallOpen(false);
+    try {
+      sessionStorage.setItem(PWA_PROMPT_DISMISSED_KEY, '1');
+    } catch {}
+  }, []);
+
+  const handleTriggerNativeInstall = useCallback(async () => {
+    if (isInstallingPwa) return;
+    setIsInstallingPwa(true);
+    const supportsWebInstall =
+      typeof Navigator !== 'undefined' &&
+      typeof Navigator.prototype?.install === 'function';
+
+    try {
+      if (supportsWebInstall) {
+        await navigator.install();
+        setInstallStatusText('The app was installed or opened.');
+        setCanNativePrompt(false);
+        handleClosePwaInstall();
+      } else if (deferredInstallPromptRef.current) {
+        const promptEvent = deferredInstallPromptRef.current;
+        deferredInstallPromptRef.current = undefined;
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        setInstallStatusText(
+          outcome === 'accepted'
+            ? 'The app was installed.'
+            : 'Installation canceled.'
+        );
+        if (!deferredInstallPromptRef.current) {
+          setCanNativePrompt(false);
+        }
+        if (outcome === 'accepted') {
+          handleClosePwaInstall();
+        }
+      }
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        setInstallStatusText(
+          'Installation was canceled or could not complete.'
+        );
+      } else {
+        setInstallStatusText('Installation could not start.');
+        console.error(error);
+      }
+    } finally {
+      setIsInstallingPwa(false);
+    }
+  }, [isInstallingPwa, handleClosePwaInstall]);
 
   const commitState = useCallback((updater, syncToServer = true) => {
     setState((prev) => {
@@ -381,23 +489,29 @@ export default function App() {
 
   return (
     <div className="min-h-dvh w-full select-none flex flex-col liquid-canvas-bg relative overflow-x-hidden">
-      {/* Native iOS Top Navigation Bar (Seamless Liquid Glass Controls) */}
+      {/* Native iOS Top Navigation Bar (Seamless Liquid Glass Controls + Dynamic Island Safe Area) */}
       {activeTab !== 'onboarding' && (
-        <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-transparent">
-          <div className="max-w-[760px] mx-auto px-5 sm:px-8 pt-3.5 pb-1 flex items-center justify-between">
+        <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-[#D0E9DF]/45 border-b border-white/35">
+          <div className="max-w-[760px] mx-auto sm:px-8 pb-2 ios-safe-header flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               {/* 3D Glossy Liquid Glass User Orb */}
               <button
+                type="button"
                 onClick={() =>
                   handleSwitchActiveLogger(
                     state.activeLogger === 'user1' ? 'user2' : 'user1'
                   )
                 }
+                aria-label={`Logging as ${
+                  state.activeLogger === 'user2'
+                    ? state.user2?.name
+                    : state.user1?.name
+                }. Tap to switch logger`}
                 style={{
                   backgroundColor: activeColor,
                   boxShadow: `0 6px 16px -3px ${activeColor}66, inset 0 2px 1.5px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(0,0,0,0.2)`,
                 }}
-                className="relative w-[30px] h-[30px] rounded-full border border-white/60 flex items-center justify-center text-white text-[12px] font-extrabold ios-press cursor-pointer"
+                className="icon-button relative w-[30px] h-[30px] rounded-full border border-white/60 flex items-center justify-center text-white text-[12px] font-extrabold ios-press cursor-pointer"
                 title={`Logging as ${
                   state.activeLogger === 'user2'
                     ? state.user2?.name
@@ -409,6 +523,7 @@ export default function App() {
 
               {anyStudyingNow && (
                 <button
+                  type="button"
                   onClick={() => setIsQuickLogOpen(true)}
                   className="liquid-glass-pill pl-2.5 pr-3 py-1 rounded-full text-[11.5px] font-bold text-[#008A50] flex items-center gap-1.5 cursor-pointer"
                 >
@@ -425,14 +540,35 @@ export default function App() {
               )}
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              {/* Native iOS PWA Install Pill (Visible when running in browser) */}
+              {!isStandalone && (
+                <button
+                  type="button"
+                  onClick={() => setIsPwaInstallOpen(true)}
+                  data-testid="header-pwa-install-pill"
+                  className="liquid-glass-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#007AFF] cursor-pointer"
+                  title="Install StudyPod iPhone App"
+                >
+                  <Download
+                    className="w-[13.5px] h-[13.5px] stroke-[2.5]"
+                    aria-hidden="true"
+                  />
+                  <span>Get App</span>
+                </button>
+              )}
+
               {/* Liquid Glass Streak Capsule */}
               <button
+                type="button"
                 onClick={() => setActiveTab('insights')}
                 className="liquid-glass-pill flex items-center gap-1.5 px-3 py-1 rounded-full cursor-pointer"
                 title="Current Study Pod Streak"
               >
-                <Flame className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B] drop-shadow-[0_2px_4px_rgba(245,158,11,0.35)]" />
+                <Flame
+                  className="w-[16px] h-[16px] text-[#F59E0B] fill-[#F59E0B] drop-shadow-[0_2px_4px_rgba(245,158,11,0.35)]"
+                  aria-hidden="true"
+                />
                 <RollingNumber
                   value={state.streak}
                   className="text-[13.5px] font-extrabold text-[#364943]"
@@ -441,13 +577,15 @@ export default function App() {
 
               {/* Liquid Glass Menu Squircle */}
               <button
+                type="button"
+                aria-label="Pod Settings"
                 onClick={() =>
                   setActiveTab(activeTab === 'you' ? 'together' : 'you')
                 }
-                className="liquid-glass-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
+                className="icon-button liquid-glass-pill w-[32px] h-[32px] rounded-[10px] flex items-center justify-center text-[#364943] cursor-pointer"
                 title="Pod Settings"
               >
-                <Menu className="w-[16px] h-[16px] stroke-[2.3]" />
+                <Menu className="w-[16px] h-[16px] stroke-[2.3]" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -455,7 +593,7 @@ export default function App() {
       )}
 
       {/* Main Content Area with Keyed iOS 26 View Transition */}
-      <main className="flex-1 w-full max-w-[760px] mx-auto sm:px-4 pb-32">
+      <main className="flex-1 w-full max-w-[760px] mx-auto sm:px-4 ios-safe-main">
         <div key={activeTab} className="animate-fadeIn">
           {activeTab === 'together' && (
             <>
@@ -494,6 +632,7 @@ export default function App() {
               onResetCleanZero={handleResetCleanZero}
               onStartFreshOnboarding={handleStartFreshOnboarding}
               onOpenPairing={() => setIsPairingOpen(true)}
+              onOpenPwaInstall={() => setIsPwaInstallOpen(true)}
               onCloseOnboarding={() => setActiveTab('together')}
             />
           )}
@@ -502,10 +641,13 @@ export default function App() {
 
       {/* iOS 26 Floating Liquid Glass Tab Bar + Physical Sliding Droplet + 3D Emerald Sphere */}
       {activeTab !== 'onboarding' && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none pb-5 pt-3 px-5 bg-gradient-to-t from-[#E5F1EC]/85 via-[#E5F1EC]/30 to-transparent">
+        <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none pt-3 ios-safe-tabbar bg-gradient-to-t from-[#E5F1EC]/90 via-[#E5F1EC]/35 to-transparent">
           <div className="max-w-[620px] mx-auto flex items-center justify-between gap-3.5">
             {/* iOS 26 Liquid Glass Capsule Tab Bar with Sliding 3D Droplet */}
-            <nav className="pointer-events-auto relative liquid-glass-tabbar rounded-full p-1.5 grid grid-cols-3 items-center flex-1 max-w-[460px]">
+            <nav
+              aria-label="Primary Bottom Navigation"
+              className="pointer-events-auto relative liquid-glass-tabbar rounded-full p-1.5 grid grid-cols-3 items-center flex-1 max-w-[460px]"
+            >
               {/* Physical Sliding 3D Liquid Glass Droplet Indicator */}
               <span
                 aria-hidden="true"
@@ -535,10 +677,13 @@ export default function App() {
                 return (
                   <button
                     key={id}
+                    type="button"
                     onClick={() => setActiveTab(id)}
+                    aria-current={isActive ? 'page' : undefined}
                     className="relative z-10 py-1.5 rounded-full flex flex-col items-center justify-center gap-0.5 ios-press cursor-pointer transition-colors duration-250"
                   >
                     <Icon
+                      aria-hidden="true"
                       className={`w-[19px] h-[19px] transition-all duration-300 ${
                         isActive
                           ? 'text-[#009A58] stroke-[2.4] -translate-y-[0.5px] scale-105'
@@ -561,6 +706,8 @@ export default function App() {
 
             {/* 3D Emerald Liquid Glass Sphere Action Button */}
             <button
+              type="button"
+              aria-label="Log Study Progress and Focus Timer"
               onClick={() => {
                 setSelectedGoalId(null);
                 setIsQuickLogOpen(true);
@@ -568,7 +715,10 @@ export default function App() {
               className="pointer-events-auto w-[56px] h-[56px] rounded-full liquid-glass-emerald-orb text-white flex items-center justify-center ios-press cursor-pointer shrink-0"
               title="Log Study Progress & Focus Timer"
             >
-              <ClipboardCheck className="relative z-10 w-[25px] h-[25px] stroke-[2.3] drop-shadow-[0_1px_2px_rgba(0,80,45,0.35)]" />
+              <ClipboardCheck
+                aria-hidden="true"
+                className="relative z-10 w-[25px] h-[25px] stroke-[2.3] drop-shadow-[0_1px_2px_rgba(0,80,45,0.35)]"
+              />
             </button>
           </div>
         </div>
@@ -594,6 +744,16 @@ export default function App() {
         onCreateNewPod={handleCreateNewPod}
         onJoinPod={handleJoinPod}
         onAcceptInvite={handleAcceptInvite}
+      />
+
+      {/* Native iPhone / iOS 26 PWA Install Sheet (Auto-prompts on open) */}
+      <IosPwaInstallModal
+        isOpen={isPwaInstallOpen}
+        onClose={handleClosePwaInstall}
+        canNativePrompt={canNativePrompt}
+        onTriggerNativeInstall={handleTriggerNativeInstall}
+        installStatusText={installStatusText}
+        isInstalling={isInstallingPwa}
       />
     </div>
   );

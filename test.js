@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {
   createDefaultState,
   computePodMetrics,
@@ -26,6 +27,17 @@ assert.equal(formatGoalValue(studyHoursGoal, 360), '6h');
 assert.equal(formatGoalValue(studyHoursGoal, 430), '7h 10m');
 assert.equal(formatGoalValue(flashcardsGoal, 2200), '2,200');
 assert.equal(formatGoalValue(readingGoal, 5), '5 pgs');
+
+// 2b. Verify iOS PWA Manifest, Icons, Service Worker & Standalone Detector
+const manifest = JSON.parse(fs.readFileSync('./public/manifest.json', 'utf8'));
+assert.equal(manifest.id, '/');
+assert.equal(manifest.display, 'standalone');
+assert.ok(Array.isArray(manifest.icons) && manifest.icons.length >= 3);
+assert.ok(fs.existsSync('./public/apple-touch-icon.png'));
+assert.ok(fs.existsSync('./public/icon-192.png'));
+assert.ok(fs.existsSync('./public/icon-512.png'));
+assert.ok(fs.existsSync('./public/sw.js'));
+assert.ok(fs.existsSync('./src/components/IosPwaInstallModal.jsx'));
 
 // 3. Verify SQLite API endpoints in-memory
 const server = createAppServer(':memory:');

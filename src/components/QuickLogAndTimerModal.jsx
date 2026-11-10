@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Play,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { formatGoalValue } from '../data/studyData.js';
 import { RollingNumber } from './RollingNumber.jsx';
+import { useIosSheetDrag } from './IosPwaInstallModal.jsx';
 
 const GOAL_ICON_MAP = {
   moon: Moon,
@@ -57,6 +58,16 @@ export function QuickLogAndTimerModal({
   onCompletePomodoro,
 }) {
   const [selectedPresetId, setSelectedPresetId] = useState('25m');
+  const { dragHandlers, sheetStyle } = useIosSheetDrag(onClose);
+
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -98,10 +109,16 @@ export function QuickLogAndTimerModal({
       <div className="flex-1" onClick={onClose} />
 
       {/* Native iOS 26 Centered Liquid Glass Bottom Sheet */}
-      <div className="w-full max-w-[540px] mx-auto rounded-t-[32px] sm:rounded-[32px] sm:mb-6 liquid-glass-sheet ios-sheet-enter max-h-[86dvh] flex flex-col overflow-hidden">
-        {/* Authentic iOS Sheet Grabber & Header */}
-        <div className="pt-2.5 pb-3 px-5 bg-white/75 backdrop-blur-xl border-b border-black/[0.06] shrink-0">
-          <div className="w-9 h-[5px] rounded-full bg-black/15 mx-auto mb-3" />
+      <div
+        style={sheetStyle}
+        className="w-full max-w-[540px] mx-auto rounded-t-[32px] sm:rounded-[32px] sm:mb-6 liquid-glass-sheet ios-sheet-enter max-h-[88dvh] flex flex-col overflow-hidden"
+      >
+        {/* Authentic iOS Sheet Grabber & Header (Swipe Down to Dismiss) */}
+        <div
+          {...dragHandlers}
+          className="pt-2.5 pb-3 px-5 bg-white/75 backdrop-blur-xl border-b border-black/[0.06] shrink-0 touch-none cursor-grab active:cursor-grabbing"
+        >
+          <div className="w-9 h-[5px] rounded-full bg-black/18 mx-auto mb-3" />
 
           <div className="flex items-center justify-between">
             <div>
@@ -117,9 +134,9 @@ export function QuickLogAndTimerModal({
               type="button"
               onClick={onClose}
               aria-label="Close Quick Log Modal"
-              className="w-8 h-8 rounded-full bg-black/[0.06] hover:bg-black/[0.1] text-[#354841] flex items-center justify-center transition ios-press cursor-pointer"
+              className="icon-button w-8 h-8 rounded-full bg-black/[0.06] hover:bg-black/[0.1] text-[#354841] flex items-center justify-center transition ios-press cursor-pointer"
             >
-              <X className="w-4 h-4 stroke-[2.5]" />
+              <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
             </button>
           </div>
 
@@ -175,7 +192,7 @@ export function QuickLogAndTimerModal({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar ios-safe-sheet">
           {/* Native iOS Live Activity / Apple Fitness Focus Timer Widget */}
           <div className="bg-gradient-to-br from-[#0E1C18] via-[#132620] to-[#19322A] text-white rounded-[26px] p-4.5 shadow-[0_10px_30px_rgba(14,28,24,0.18)] border border-white/10">
             <div className="flex items-center justify-between mb-3">
@@ -360,7 +377,7 @@ export function QuickLogAndTimerModal({
                             )
                           }
                           style={{ accentColor: activeColor }}
-                          className="w-full h-2 rounded-lg bg-[#E4EFE8] cursor-pointer"
+                          className="w-full rounded-lg cursor-pointer ios-slider"
                         />
                       </div>
 

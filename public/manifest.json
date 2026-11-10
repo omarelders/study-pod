@@ -1,9 +1,37 @@
 {
+  "id": "/",
   "name": "StudyPod — Study Together",
   "short_name": "StudyPod",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#DDECE6",
-  "theme_color": "#DDECE6",
-  "description": "2-Person Study Accountability & Focus Tracker"
+  "display_override": ["standalone"],
+  "orientation": "portrait",
+  "background_color": "#D0E9DF",
+  "theme_color": "#D0E9DF",
+  "description": "2-Person Study Accountability & Focus Tracker with iOS Liquid Glass UI",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }
