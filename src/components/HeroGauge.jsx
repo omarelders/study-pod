@@ -101,20 +101,22 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
             </filter>
           </defs>
 
-          {/* Curved Header Text */}
-          <text
-            fill="#637871"
-            style={{
-              fontSize: lang === 'ar' ? '10.5px' : '9.5px',
-              fontWeight: 700,
-              letterSpacing: lang === 'ar' ? '0px' : '0.14em',
-            }}
-            className="uppercase"
-          >
-            <textPath href="#goalsArc" startOffset="50%" textAnchor="middle">
-              {t.goalsReachedToday}
-            </textPath>
-          </text>
+          {/* Curved Header Text (English only — iOS WebKit SVG textPath breaks Arabic cursive shaping) */}
+          {lang !== 'ar' && (
+            <text
+              fill="#637871"
+              style={{
+                fontSize: '9.5px',
+                fontWeight: 700,
+                letterSpacing: '0.14em',
+              }}
+              className="uppercase"
+            >
+              <textPath href="#goalsArc" startOffset="50%" textAnchor="middle">
+                {t.goalsReachedToday}
+              </textPath>
+            </text>
+          )}
 
           {/* Left Dot-Matrix Arc (User 1 — Staggered Liquid Glass Beads) */}
           <g key={`left-arc-${state?.selectedDayView || 'today'}`}>
@@ -194,7 +196,19 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
         </svg>
 
         {/* Center Metric Readout with iOS 26 Rolling Odometer */}
-        <div className="absolute inset-0 flex flex-col items-center justify-start pt-[38px] pointer-events-none">
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-start ${
+            lang === 'ar' ? 'pt-[16px]' : 'pt-[38px]'
+          } pointer-events-none`}
+        >
+          {lang === 'ar' && (
+            <span
+              dir="rtl"
+              className="text-[11.5px] font-bold text-[#5A7068] mb-1.5 leading-none"
+            >
+              {t.goalsReachedToday}
+            </span>
+          )}
           <div className="relative flex flex-col items-center">
             <span
               className="text-[72px] font-extrabold tracking-[-0.045em] leading-[0.88] text-[#141E28] drop-shadow-[0_2px_0_rgba(255,255,255,0.8)]"
@@ -202,7 +216,10 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
             >
               <RollingNumber value={displayPercent} staggerMs={55} />
             </span>
-            <span className="text-[12.5px] font-extrabold tracking-[0.14em] text-[#141E28] mt-1.5 uppercase">
+            <span
+              dir={lang === 'ar' ? 'rtl' : 'ltr'}
+              className="text-[12.5px] font-extrabold tracking-[0.14em] text-[#141E28] mt-1.5 uppercase"
+            >
               {t.percent}
             </span>
 
@@ -221,6 +238,7 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
           {/* Warm Amber Liquid Glass Yesterday Comparison Pill */}
           <button
             type="button"
+            dir="ltr"
             onClick={() => {
               triggerIosHaptic('light');
               onToggleYesterday && onToggleYesterday();

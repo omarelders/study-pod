@@ -57,6 +57,9 @@ assert.equal(getWeekdayLabel('M', 0, 'ar'), 'ن');
 const indexCss = fs.readFileSync('./src/index.css', 'utf8');
 assert.ok(indexCss.includes('[dir="rtl"] *:not(.font-mono)'));
 assert.ok(indexCss.includes('inset-inline-start: 52px'));
+assert.ok(indexCss.includes('backdrop-filter: none'));
+const heroGaugeSrc = fs.readFileSync('./src/components/HeroGauge.jsx', 'utf8');
+assert.ok(heroGaugeSrc.includes("lang !== 'ar'"));
 
 // 2d. Verify Wall-Clock Background Timer (survives screen lock / backgrounding)
 const t0 = 1_700_000_000_000;

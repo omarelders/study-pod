@@ -122,8 +122,8 @@ export function StudyBentoGrid({
             {getLocalizedDayHeader(isYesterday, lang)}
           </div>
 
-          {/* Minimal Native Legend: ● Ced  ● Joe */}
-          <div className="flex items-center gap-2.5">
+          {/* Minimal Native Legend: ● Omar (Left/Green)  ● Partner (Right/Blue) */}
+          <div dir="ltr" className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => onSwitchActiveLogger && onSwitchActiveLogger('user1')}

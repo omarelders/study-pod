@@ -686,10 +686,13 @@ export default function App() {
           anyModalOpen ? 'ios-app-shell-recessed' : ''
         }`}
       >
-        {/* Native iOS Top Navigation Bar (Progressive Blur + Dynamic Island Safe Area) */}
+        {/* Native iOS Top Navigation Bar (Floating Liquid Glass Chrome + Safe Area) */}
         {activeTab !== 'onboarding' && (
           <header className="sticky top-0 z-30 w-full ios-nav-blur">
-            <div className="max-w-[760px] mx-auto sm:px-8 pb-2 ios-safe-header flex items-center justify-between">
+            <div
+              dir="ltr"
+              className="max-w-[760px] mx-auto sm:px-8 pb-2 ios-safe-header flex items-center justify-between"
+            >
               <div className="flex items-center gap-2.5">
                 {/* 3D Glossy Liquid Glass User Orb with Active Initial */}
                 <button
@@ -875,26 +878,28 @@ export default function App() {
 
       {/* iOS 26 Floating Liquid Glass Tab Bar + Physical Sliding Droplet + 3D Emerald Sphere */}
       {activeTab !== 'onboarding' && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none pt-3 ios-safe-tabbar bg-gradient-to-t from-[#E5F1EC]/90 via-[#E5F1EC]/35 to-transparent">
-          <div className="max-w-[620px] mx-auto flex items-center justify-between gap-3.5">
+        <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none pt-2 ios-safe-tabbar">
+          <div
+            dir="ltr"
+            className="max-w-[620px] mx-auto flex items-center justify-between gap-3.5"
+          >
             {/* iOS 26 Liquid Glass Capsule Tab Bar with Sliding 3D Droplet */}
             <nav
               aria-label="Primary Bottom Navigation"
               className="pointer-events-auto relative liquid-glass-tabbar rounded-full p-1.5 grid grid-cols-3 items-center flex-1 max-w-[460px]"
             >
-              {/* Physical Sliding 3D Liquid Glass Droplet Indicator (RTL-aware logical start-1.5) */}
+              {/* Physical Sliding 3D Liquid Glass Droplet Indicator */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute top-1.5 bottom-1.5 start-1.5 w-[calc((100%-12px)/3)] rounded-full liquid-glass-tab-active transition-transform duration-450"
+                className="pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 w-[calc((100%-12px)/3)] rounded-full liquid-glass-tab-active transition-transform duration-450"
                 style={{
                   transform: `translate3d(${
-                    (lang === 'ar' ? -1 : 1) *
-                    (activeTab === 'insights'
-                      ? 100
+                    activeTab === 'insights'
+                      ? '100%'
                       : activeTab === 'you'
-                        ? 200
-                        : 0)
-                  }%, 0, 0)`,
+                        ? '200%'
+                        : '0%'
+                  }, 0, 0)`,
                   transitionTimingFunction: 'cubic-bezier(0.34, 1.42, 0.64, 1)',
                 }}
               />
