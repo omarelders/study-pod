@@ -64,6 +64,7 @@ export function RollingNumber({
 
   return (
     <span
+      dir="ltr"
       className={`inline-flex items-baseline tabular-nums font-sf-rounded ${className}`}
       style={{ lineHeight: 1 }}
       {...rest}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Check, Sparkles, Smartphone, ArrowDown, ArrowUp } from 'lucide-react';
+import { getTexts } from '../data/i18n.js';
 
 /**
  * Trigger genuine iOS 17.4+ / iOS 18 / iOS 26 Safari Taptic Engine Haptics
@@ -205,6 +206,7 @@ export function StudyPodAppIcon({ size = 60 }) {
 export function IosPwaInstallModal({
   isOpen,
   onClose,
+  lang = 'en',
   canNativePrompt,
   onTriggerNativeInstall,
   installStatusText,
@@ -212,6 +214,7 @@ export function IosPwaInstallModal({
 }) {
   const { dragHandlers, sheetStyle } = useIosSheetDrag(onClose);
   const browserVariant = detectIosBrowserVariant();
+  const t = getTexts(lang);
 
   // Lock background scroll while modal sheet is open
   useEffect(() => {
@@ -270,16 +273,16 @@ export function IosPwaInstallModal({
               <div className="min-w-0">
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00B86B]/14 border border-[#00B86B]/25 text-[#008A50] text-[10px] font-extrabold tracking-[0.08em] uppercase mb-1">
                   <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
-                  <span>iPhone Native Web App</span>
+                  <span>{t.iphoneNativeWebApp}</span>
                 </div>
                 <h2
                   id="ios-pwa-install-title"
                   className="text-[20px] font-extrabold text-[#141E28] tracking-[-0.03em] leading-tight"
                 >
-                  Install StudyPod App
+                  {t.installStudyPodApp}
                 </h2>
                 <p className="text-[12.5px] font-medium text-[#5E726A] tracking-[-0.01em] mt-0.5">
-                  Add to your iPhone Home Screen for full-screen Liquid Glass &amp; instant partner sync
+                  {t.installModalSubtitle}
                 </p>
               </div>
             </div>
@@ -302,9 +305,9 @@ export function IosPwaInstallModal({
         {/* Native iPhone Benefits Strip (Dynamic Island + Full Screen + Offline Ready) */}
         <div className="grid grid-cols-3 gap-2 my-3">
           {[
-            { title: 'Full Screen', sub: 'No Safari bars' },
-            { title: '120Hz Glass', sub: 'Native iOS feel' },
-            { title: 'Live Sync', sub: 'Instant pod ring' },
+            { title: t.featFullScreen, sub: t.featFullScreenSub },
+            { title: t.featGlass, sub: t.featGlassSub },
+            { title: t.featLiveSync, sub: t.featLiveSyncSub },
           ].map((feat) => (
             <div
               key={feat.title}
@@ -335,7 +338,7 @@ export function IosPwaInstallModal({
             >
               <Smartphone className="w-4 h-4 stroke-[2.4]" aria-hidden="true" />
               <span>
-                {isInstalling ? 'Installing StudyPod…' : 'Download & Install App Now'}
+                {isInstalling ? t.installingStudyPod : t.downloadAndInstallNow}
               </span>
             </button>
           </div>
@@ -359,7 +362,7 @@ export function IosPwaInstallModal({
         <div className="rounded-[24px] bg-white/88 border border-white/95 p-3.5 shadow-[0_6px_22px_-4px_rgba(12,38,30,0.06)] space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <span className="text-[10.5px] font-extrabold tracking-[0.13em] text-[#60756D] uppercase">
-              HOW TO INSTALL ON IPHONE (10 SEC)
+              {t.howToInstallHeader}
             </span>
             <span className="text-[10.5px] font-bold text-[#009E5C]">
               {browserVariant.name}
@@ -373,14 +376,16 @@ export function IosPwaInstallModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[13.5px] font-bold text-[#141E28] tracking-[-0.015em]">
-                1. Tap the <span className="text-[#007AFF]">Share</span> button
+                {t.step1Title}{' '}
+                <span className="text-[#007AFF]">{t.shareWord}</span>{' '}
+                {t.buttonWord}
               </div>
               <div className="text-[11.5px] font-medium text-[#687C74]">
-                Located in your {browserVariant.shareLocation}
+                {t.step1Sub(browserVariant.shareLocation)}
               </div>
             </div>
             <span className="px-2 py-0.5 rounded-md bg-[#007AFF]/10 text-[#007AFF] text-[11px] font-extrabold shrink-0">
-              Step 1
+              {t.step1Badge}
             </span>
           </div>
 
@@ -391,14 +396,14 @@ export function IosPwaInstallModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[13.5px] font-bold text-[#141E28] tracking-[-0.015em]">
-                2. Select &ldquo;Add to Home Screen&rdquo;
+                {t.step2Title}
               </div>
               <div className="text-[11.5px] font-medium text-[#687C74]">
-                Scroll down the share sheet menu &amp; tap it
+                {t.step2Sub}
               </div>
             </div>
             <span className="px-2 py-0.5 rounded-md bg-black/[0.06] text-[#354841] text-[11px] font-extrabold shrink-0">
-              Step 2
+              {t.step2Badge}
             </span>
           </div>
 
@@ -409,14 +414,14 @@ export function IosPwaInstallModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[13.5px] font-bold text-[#141E28] tracking-[-0.015em]">
-                3. Tap &ldquo;Add&rdquo; in top right
+                {t.step3Title}
               </div>
               <div className="text-[11.5px] font-medium text-[#687C74]">
-                Open StudyPod from your Home Screen like a native app
+                {t.step3Sub}
               </div>
             </div>
             <span className="px-2 py-0.5 rounded-md bg-[#00B86B]/12 text-[#008A50] text-[11px] font-extrabold shrink-0">
-              Done
+              {t.step3Badge}
             </span>
           </div>
         </div>
@@ -432,7 +437,7 @@ export function IosPwaInstallModal({
             data-testid="pwa-continue-browser-btn"
             className="w-full py-3 rounded-full bg-black/[0.06] hover:bg-black/[0.09] text-[#141E28] font-extrabold text-[14px] tracking-[-0.01em] ios-press cursor-pointer"
           >
-            Got It — Continue to StudyPod
+            {t.gotItContinue}
           </button>
 
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#007AFF] pt-0.5 animate-bounce-down">
@@ -441,9 +446,7 @@ export function IosPwaInstallModal({
             ) : (
               <ArrowDown className="w-3.5 h-3.5 stroke-[2.6]" aria-hidden="true" />
             )}
-            <span>
-              Tap Share in your {browserVariant.shareLocation} to install
-            </span>
+            <span>{t.tapSharePointer(browserVariant.shareLocation)}</span>
           </div>
         </div>
       </div>

@@ -20,6 +20,7 @@ import {
   fetchPodStateFromCloud,
   checkBackendHealth,
 } from './data/supabaseSync.js';
+import { getTexts } from './data/i18n.js';
 import HeroGauge from './components/HeroGauge.jsx';
 import StudyBentoGrid from './components/StudyBentoGrid.jsx';
 import InsightsView from './components/InsightsView.jsx';
@@ -36,6 +37,7 @@ import {
 } from './components/IosPwaInstallModal.jsx';
 
 const STORAGE_KEY = 'studypod_state_v2';
+const LANG_STORAGE_KEY = 'studypod_lang';
 const PWA_PROMPT_DISMISSED_KEY = 'studypod_pwa_prompt_dismissed_v1';
 
 function enrichStateWithLiveProgress(nextState) {
@@ -71,15 +73,41 @@ function enrichStateWithLiveProgress(nextState) {
 
 export default function App() {
   const [state, setState] = useState(() => {
+    let savedLang = 'en';
+    try {
+      if (localStorage.getItem(LANG_STORAGE_KEY) === 'ar') {
+        savedLang = 'ar';
+      }
+    } catch {}
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed.goals)) return parsed;
+        if (parsed && Array.isArray(parsed.goals)) {
+          return {
+            ...parsed,
+            lang: parsed.lang || savedLang,
+          };
+        }
       }
     } catch {}
-    return createRealInitialState('ZAU8PP');
+    return {
+      ...createRealInitialState('ZAU8PP'),
+      lang: savedLang,
+    };
   });
+
+  const lang = state.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, lang);
+    } catch {}
+  }, [lang]);
 
   const [activeTab, setActiveTab] = useState('together'); // 'together' | 'insights' | 'you' | 'onboarding'
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
@@ -236,6 +264,7 @@ export default function App() {
         const merged = {
           ...remoteState,
           activeLogger: prev.activeLogger || remoteState.activeLogger || 'user1',
+          lang: prev.lang || remoteState.lang || 'en',
         };
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
@@ -330,6 +359,25 @@ export default function App() {
       false
     );
   };
+
+  const handleToggleLanguage = useCallback(
+    (nextLangOverride) => {
+      commitState((prev) => {
+        const cur = prev.lang === 'ar' ? 'ar' : 'en';
+        const nextLang =
+          nextLangOverride === 'ar' || nextLangOverride === 'en'
+            ? nextLangOverride
+            : cur === 'ar'
+              ? 'en'
+              : 'ar';
+        return {
+          ...prev,
+          lang: nextLang,
+        };
+      }, false);
+    },
+    [commitState]
+  );
 
   const handleUpdateGoalValue = (goalId, newValue, targetUserKey) => {
     const uKey = targetUserKey || state.activeLogger || 'user1';
@@ -444,7 +492,11 @@ export default function App() {
   };
 
   const handleResetDemo = () => {
-    const demo = { ...createDefaultState(), updatedAt: Date.now() };
+    const demo = {
+      ...createDefaultState(),
+      lang: state.lang || 'en',
+      updatedAt: Date.now(),
+    };
     setState(demo);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
@@ -456,6 +508,7 @@ export default function App() {
   const handleResetCleanZero = () => {
     const clean = {
       ...createRealInitialState(state.podCode || 'ZAU8PP'),
+      lang: state.lang || 'en',
       user1: {
         ...createRealInitialState().user1,
         name: state.user1?.name === 'Ced' ? 'Omar' : state.user1?.name || 'Omar',
@@ -477,7 +530,10 @@ export default function App() {
   };
 
   const handleStartFreshOnboarding = () => {
-    const blank = createBlankOnboardingState();
+    const blank = {
+      ...createBlankOnboardingState(),
+      lang: state.lang || 'en',
+    };
     commitState(blank, true);
     setActiveTab('onboarding');
   };
@@ -591,9 +647,32 @@ export default function App() {
                       className="w-[13.5px] h-[13.5px] stroke-[2.5]"
                       aria-hidden="true"
                     />
-                    <span>Get App</span>
+                    <span>{t.getApp}</span>
                   </button>
                 )}
+
+                {/* 1-Tap Bilingual Language Toggle Pill (عربي / EN) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerIosHaptic('light');
+                    handleToggleLanguage();
+                  }}
+                  data-testid="header-lang-toggle"
+                  aria-label={
+                    lang === 'ar'
+                      ? 'Switch language to English'
+                      : 'تغيير اللغة إلى العربية'
+                  }
+                  className="liquid-glass-pill flex items-center justify-center px-2.5 py-1 rounded-full text-[12px] font-extrabold text-[#1E332C] cursor-pointer"
+                  title={
+                    lang === 'ar'
+                      ? 'Switch to English'
+                      : 'التبديل إلى العربية'
+                  }
+                >
+                  <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
+                </button>
 
                 {/* Liquid Glass Streak Capsule */}
                 <button
@@ -672,6 +751,7 @@ export default function App() {
                 backendStatus={backendStatus}
                 onRefreshBackendStatus={refreshBackendStatus}
                 onUpdateState={(next) => commitState(next, true)}
+                onToggleLanguage={handleToggleLanguage}
                 onResetDemo={handleResetDemo}
                 onResetCleanZero={handleResetCleanZero}
                 onStartFreshOnboarding={handleStartFreshOnboarding}
@@ -693,28 +773,29 @@ export default function App() {
               aria-label="Primary Bottom Navigation"
               className="pointer-events-auto relative liquid-glass-tabbar rounded-full p-1.5 grid grid-cols-3 items-center flex-1 max-w-[460px]"
             >
-              {/* Physical Sliding 3D Liquid Glass Droplet Indicator */}
+              {/* Physical Sliding 3D Liquid Glass Droplet Indicator (RTL-aware logical start-1.5) */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute top-1.5 bottom-1.5 left-1.5 w-[calc((100%-12px)/3)] rounded-full liquid-glass-tab-active transition-transform duration-450"
+                className="pointer-events-none absolute top-1.5 bottom-1.5 start-1.5 w-[calc((100%-12px)/3)] rounded-full liquid-glass-tab-active transition-transform duration-450"
                 style={{
                   transform: `translate3d(${
-                    activeTab === 'insights'
-                      ? '100%'
+                    (lang === 'ar' ? -1 : 1) *
+                    (activeTab === 'insights'
+                      ? 100
                       : activeTab === 'you'
-                        ? '200%'
-                        : '0%'
-                  }, 0, 0)`,
+                        ? 200
+                        : 0)
+                  }%, 0, 0)`,
                   transitionTimingFunction: 'cubic-bezier(0.34, 1.42, 0.64, 1)',
                 }}
               />
 
               {[
-                { id: 'together', label: 'Together', Icon: Users },
-                { id: 'insights', label: 'Insights', Icon: BarChart2 },
+                { id: 'together', label: t.together, Icon: Users },
+                { id: 'insights', label: t.insights, Icon: BarChart2 },
                 {
                   id: 'you',
-                  label: state.paired ? 'You' : 'Your partner',
+                  label: state.paired ? t.you : t.yourPartner,
                   Icon: User,
                 },
               ].map(({ id, label, Icon }) => {
@@ -799,6 +880,7 @@ export default function App() {
       <IosPwaInstallModal
         isOpen={isPwaInstallOpen}
         onClose={handleClosePwaInstall}
+        lang={lang}
         canNativePrompt={canNativePrompt}
         onTriggerNativeInstall={handleTriggerNativeInstall}
         installStatusText={installStatusText}

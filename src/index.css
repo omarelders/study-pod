@@ -24,7 +24,7 @@
   }
 
   html, body {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Rounded', 'SF Pro Text', 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Rounded', 'SF Pro Text', 'SF Arabic', 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
@@ -35,6 +35,11 @@
     color: #0F1A24;
     overscroll-behavior-y: none;
     overflow-wrap: anywhere;
+  }
+
+  /* Prevent positive tracking from disconnecting Arabic cursive letterforms */
+  [dir="rtl"] *:not(.font-mono) {
+    letter-spacing: 0 !important;
   }
 
   h1, h2, h3 {
@@ -59,7 +64,7 @@
 
 /* Native Apple SF Pro Rounded on iOS WebKit for Hero Gauges & Stat Readouts */
 .font-sf-rounded {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif;
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'SF Arabic', 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', sans-serif;
 }
 
 /* Native HTML Switch Control Styling (Safari 17.4+ / iOS 18+) */
@@ -130,7 +135,7 @@ input[type="checkbox"][switch]:focus-visible {
   filter: brightness(0.95) saturate(0.94);
 }
 
-/* Authentic iOS 18 UITableViewStyleInsetGrouped 52px-Inset Hairline Dividers */
+/* Authentic iOS 18 UITableViewStyleInsetGrouped 52px-Inset Hairline Dividers (RTL-aware logical inset) */
 .ios-inset-list > * + * {
   position: relative;
 }
@@ -138,8 +143,8 @@ input[type="checkbox"][switch]:focus-visible {
   content: "";
   position: absolute;
   top: 0;
-  left: 52px;
-  right: 0;
+  inset-inline-start: 52px;
+  inset-inline-end: 0;
   height: 0.5px;
   background-color: rgba(15, 28, 24, 0.08);
   pointer-events: none;

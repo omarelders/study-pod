@@ -19,9 +19,14 @@ import {
 import {
   WEEKLY_HISTORY_DEFAULT,
   formatGoalValue,
-  getCurrentWeekRangeLabel,
   getCurrentWeekdayIndexMondayFirst,
 } from '../data/studyData.js';
+import {
+  getTexts,
+  getGoalTitle,
+  getWeekdayLabel,
+  getLocalizedWeekRange,
+} from '../data/i18n.js';
 import { RollingNumber } from './RollingNumber.jsx';
 import { triggerIosHaptic } from './IosPwaInstallModal.jsx';
 
@@ -205,8 +210,9 @@ function SplitHalfCircle({
 /**
  * 10-Segment 240° Horseshoe Pod Health Gauge (Exact replica of 00:58 - 00:59 in video)
  */
-function PodHealthHorseshoeGauge({ podHealth = 0 }) {
+function PodHealthHorseshoeGauge({ podHealth = 0, lang = 'en' }) {
   const [showHealthInfo, setShowHealthInfo] = useState(false);
+  const t = getTexts(lang);
   const totalSegments = 10;
   const clampedHealth = Math.max(0, Math.min(100, podHealth));
   // At 86%, 9 of the 10 segments are lit; at 0%, 0 segments are lit
@@ -239,10 +245,10 @@ function PodHealthHorseshoeGauge({ podHealth = 0 }) {
 
   const statusText =
     clampedHealth >= 75
-      ? 'THRIVING'
+      ? t.thriving
       : clampedHealth >= 50
-        ? 'STEADY'
-        : 'WARMING UP';
+        ? t.steady
+        : t.warmingUp;
 
   return (
     <div className="relative flex flex-col items-center pt-1 pb-2">
@@ -265,14 +271,14 @@ function PodHealthHorseshoeGauge({ podHealth = 0 }) {
         className="icon-button flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase mb-1 cursor-pointer"
         aria-expanded={showHealthInfo}
       >
-        <span>POD HEALTH</span>
+        <span>{t.podHealth}</span>
         <span className="w-3.5 h-3.5 rounded-full border border-[#96A7A0]/60 text-[8.5px] font-bold flex items-center justify-center text-[#84968F] leading-none">
           i
         </span>
       </button>
       {showHealthInfo && (
         <div className="mb-2 px-3 py-1.5 rounded-full bg-white/80 border border-white/95 text-[11px] font-semibold text-[#364943] text-center shadow-2xs animate-fadeIn">
-          70% daily goal completion + 30% shared pod sync
+          {t.podHealthInfo}
         </div>
       )}
 
@@ -416,6 +422,9 @@ function RisingSunIllustration() {
 export function InsightsView({ state, metrics }) {
   const [showWeeklyDetail, setShowWeeklyDetail] = useState(false);
 
+  const lang = state?.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
+
   const u1Name = state?.user1?.name || 'Ced';
   const u2Name = state?.user2?.name || 'Joe';
   const u1Color = state?.user1?.color || '#00B86B';
@@ -427,8 +436,8 @@ export function InsightsView({ state, metrics }) {
       : WEEKLY_HISTORY_DEFAULT;
 
   const weeklySyncDays = weeklyHistory.filter((d) => d.u1 && d.u2).length;
-  const weekRangeLabel = getCurrentWeekRangeLabel(false);
-  const weekRangeUpper = getCurrentWeekRangeLabel(true);
+  const weekRangeLabel = getLocalizedWeekRange(false, lang);
+  const weekRangeUpper = getLocalizedWeekRange(true, lang);
   const todayWeekdayIdx = getCurrentWeekdayIndexMondayFirst();
   const isDemo = Boolean(metrics?.isDefaultDemo);
 
@@ -446,22 +455,28 @@ export function InsightsView({ state, metrics }) {
   if (showWeeklyDetail) {
     return (
       <div className="px-5 pt-1 pb-28 max-w-[560px] mx-auto animate-fadeIn">
-        {/* Clean Top-Left Back Button */}
+        {/* Clean Top-Start Back Button */}
         <div className="flex items-center mb-1">
           <button
             type="button"
             onClick={() => setShowWeeklyDetail(false)}
             aria-label="Back to Insights"
-            className="w-9 h-9 -ml-1.5 rounded-full liquid-glass-pill flex items-center justify-center text-[#141E28] cursor-pointer"
+            className="w-9 h-9 -ms-1.5 rounded-full liquid-glass-pill flex items-center justify-center text-[#141E28] cursor-pointer"
           >
-            <ChevronLeft className="w-5 h-5 stroke-[2.3]" />
+            <ChevronLeft
+              className={`w-5 h-5 stroke-[2.3] ${
+                lang === 'ar' ? 'rotate-180' : ''
+              }`}
+            />
           </button>
         </div>
 
         {/* Hero Sync Number + Floating Mascot Orb */}
         <div className="relative text-center mt-1 mb-6">
           <div className="text-[10.5px] font-bold tracking-[0.15em] text-[#788A83] uppercase">
-            YOU &amp; {u2Name.toUpperCase()} · {weekRangeUpper}
+            {lang === 'ar'
+              ? `أنت و ${u2Name} · ${weekRangeUpper}`
+              : `YOU & ${u2Name.toUpperCase()} · ${weekRangeUpper}`}
           </div>
 
           <div className="relative inline-flex items-center justify-center mt-1">
@@ -475,15 +490,18 @@ export function InsightsView({ state, metrics }) {
           </div>
 
           <div className="text-[20px] font-bold text-[#141E28] tracking-[-0.025em] mt-1.5">
-            days in sync this week
+            {t.daysInSyncThisWeek}
           </div>
           <p className="text-[12.5px] font-medium text-[#7A8B85] mt-0.5">
-            Both of you hit every shared goal that day.
+            {t.bothHitEveryGoal}
           </p>
         </div>
 
         {/* 7-Day Split Circles Row (Circles on top, M T W T F S S below) */}
-        <div className="grid grid-cols-7 gap-2 justify-items-center mb-7 px-2">
+        <div
+          dir="ltr"
+          className="grid grid-cols-7 gap-2 justify-items-center mb-7 px-2"
+        >
           {weeklyHistory.map((item, idx) => {
             const both = item.u1 && item.u2;
             return (
@@ -507,7 +525,7 @@ export function InsightsView({ state, metrics }) {
                     both ? 'text-[#141E28]' : 'text-[#8FA19A]'
                   }`}
                 >
-                  {item.day}
+                  {getWeekdayLabel(item.day, idx, lang)}
                 </span>
               </div>
             );
@@ -520,10 +538,10 @@ export function InsightsView({ state, metrics }) {
           className="liquid-glass-card p-5 ios-stagger-card"
         >
           <div className="text-[10.5px] font-extrabold tracking-[0.14em] text-[#7A8B85] uppercase">
-            GOALS
+            {t.goalsHeader}
           </div>
           <div className="text-[13px] text-[#6B7E77] font-medium mt-0.5 mb-4">
-            Where you both showed up this week
+            {t.whereYouBothShowedUp}
           </div>
 
           <div className="divide-y divide-black/[0.05]">
@@ -547,12 +565,7 @@ export function InsightsView({ state, metrics }) {
                       : { u1: Boolean(d.u1), u2: Boolean(d.u2) }
                   );
               const goalSyncCount = pattern.filter((d) => d.u1 && d.u2).length;
-              const shortTitle =
-                goal.id === 'flashcards'
-                  ? 'Flashcards'
-                  : goal.id === 'active-recall'
-                    ? 'Recall'
-                    : goal.title;
+              const shortTitle = getGoalTitle(goal, lang, true);
 
               return (
                 <div
@@ -571,7 +584,7 @@ export function InsightsView({ state, metrics }) {
                   </div>
 
                   {/* 7 Split Semicircle Indicators */}
-                  <div className="flex items-center gap-1.5">
+                  <div dir="ltr" className="flex items-center gap-1.5">
                     {pattern.map((d, i) => (
                       <SplitHalfCircle
                         key={i}
@@ -585,7 +598,7 @@ export function InsightsView({ state, metrics }) {
                   </div>
 
                   {/* Right Sync Count */}
-                  <div className="w-6 text-right shrink-0">
+                  <div className="w-6 text-end shrink-0">
                     <span className="text-[21px] font-extrabold text-[#141E28] tracking-[-0.03em] tabular-nums">
                       {goalSyncCount}
                     </span>
@@ -607,10 +620,10 @@ export function InsightsView({ state, metrics }) {
       {/* Top Header Row: Left "Insights", Right "Ced + Joe · together 12 days" */}
       <div className="flex items-baseline justify-between mb-3">
         <h1 className="text-[28px] font-extrabold text-[#141E28] tracking-[-0.035em] leading-none">
-          Insights
+          {t.insights}
         </h1>
         <p className="text-[12.5px] font-semibold text-[#748680] tracking-[-0.01em] tabular-nums">
-          {u1Name} + {u2Name} · together {state?.daysTogether ?? 12} days
+          {t.togetherDays(u1Name, u2Name, state?.daysTogether ?? 12)}
         </p>
       </div>
 
@@ -619,7 +632,7 @@ export function InsightsView({ state, metrics }) {
         style={{ '--stagger': 0 }}
         className="liquid-glass-card px-5 pt-5 pb-6 mb-6 ios-stagger-card"
       >
-        <PodHealthHorseshoeGauge podHealth={effectivePodHealth} />
+        <PodHealthHorseshoeGauge podHealth={effectivePodHealth} lang={lang} />
 
         {/* 3 Borderless Stat Columns */}
         <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-white/60 text-center">
@@ -632,10 +645,10 @@ export function InsightsView({ state, metrics }) {
               <RollingNumber value={state?.bestStreak ?? 0} />
             </div>
             <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
-              days
+              {t.days}
             </div>
             <div className="text-[12px] font-bold text-[#263330] mt-0.5 tracking-[-0.01em]">
-              Best streak
+              {t.bestStreak}
             </div>
           </div>
 
@@ -648,10 +661,10 @@ export function InsightsView({ state, metrics }) {
               <RollingNumber value={state?.daysTogether ?? 1} />
             </div>
             <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
-              total days
+              {t.totalDays}
             </div>
             <div className="text-[12px] font-bold text-[#263330] mt-0.5 tracking-[-0.01em]">
-              Days together
+              {t.daysTogether}
             </div>
           </div>
 
@@ -664,10 +677,10 @@ export function InsightsView({ state, metrics }) {
               <RollingNumber value={state?.streak ?? 0} />
             </div>
             <div className="text-[10.5px] font-medium text-[#8C9E97] mt-0.5">
-              days
+              {t.days}
             </div>
             <div className="text-[12px] font-bold text-[#263330] mt-0.5 tracking-[-0.01em]">
-              Current streak
+              {t.currentStreak}
             </div>
           </div>
         </div>
@@ -677,21 +690,21 @@ export function InsightsView({ state, metrics }) {
       <div style={{ '--stagger': 1 }} className="mb-6 ios-stagger-card">
         <div className="flex items-baseline justify-between mb-2.5 px-0.5">
           <h2 className="text-[19px] font-bold tracking-[-0.025em] text-[#141E28]">
-            Weekly
+            {t.weekly}
           </h2>
           <button
             type="button"
             onClick={() => setShowWeeklyDetail(true)}
             className="text-[12.5px] font-semibold text-[#7A8B85] hover:text-[#141E28] transition cursor-pointer"
           >
-            Recap ›
+            {t.recap} {lang === 'ar' ? '‹' : '›'}
           </button>
         </div>
 
         <button
           type="button"
           onClick={() => setShowWeeklyDetail(true)}
-          className="w-full text-left relative overflow-hidden rounded-[26px] p-5 flex items-center justify-between gap-4 ios-press cursor-pointer group"
+          className="w-full text-start relative overflow-hidden rounded-[26px] p-5 flex items-center justify-between gap-4 ios-press cursor-pointer group"
           style={{
             background:
               'linear-gradient(135deg, rgba(255, 251, 238, 0.84) 0%, rgba(252, 239, 202, 0.68) 52%, rgba(247, 231, 186, 0.78) 100%)',
@@ -713,19 +726,23 @@ export function InsightsView({ state, metrics }) {
 
             <div>
               <div className="text-[10px] font-extrabold tracking-[0.14em] text-[#B88624] uppercase">
-                YOUR WEEK
+                {t.yourWeek}
               </div>
               <div className="text-[20px] font-extrabold text-[#141E28] tracking-[-0.03em] leading-tight mt-0.5">
                 {weekRangeLabel}
               </div>
               <div className="text-[12.5px] font-medium text-[#8C7A54] mt-0.5">
-                Tap to open recap · {weeklySyncDays} days in sync
+                {t.tapToOpenRecap(weeklySyncDays)}
               </div>
             </div>
           </div>
 
           <div className="relative z-10 w-8 h-8 rounded-full bg-white/55 border border-white/80 flex items-center justify-center text-[#A8791E] group-hover:translate-x-0.5 transition">
-            <ChevronRight className="w-4 h-4 stroke-[2.4]" />
+            <ChevronRight
+              className={`w-4 h-4 stroke-[2.4] ${
+                lang === 'ar' ? 'rotate-180' : ''
+              }`}
+            />
           </div>
         </button>
       </div>
@@ -734,10 +751,10 @@ export function InsightsView({ state, metrics }) {
       <div style={{ '--stagger': 2 }} className="ios-stagger-card">
         <div className="flex items-baseline justify-between mb-2.5 px-0.5">
           <h2 className="text-[19px] font-bold tracking-[-0.025em] text-[#141E28]">
-            Individual
+            {t.individual}
           </h2>
           <span className="text-[12px] font-semibold text-[#7A8B85]">
-            Today&apos;s pace
+            {t.todaysPace}
           </span>
         </div>
 
@@ -762,16 +779,18 @@ export function InsightsView({ state, metrics }) {
                 <RollingNumber value={`${u1Percent}%`} />
               </div>
               <div className="text-[11.5px] font-medium text-[#748680] mt-1">
-                {formatGoalValue(
-                  dailyGoals[0] || { displayFormat: 'hours-mins' },
-                  dailyGoals[0]?.user1 ?? 0
-                ) === '—'
-                  ? '0m'
-                  : formatGoalValue(
-                      dailyGoals[0] || { displayFormat: 'hours-mins' },
-                      dailyGoals[0]?.user1 ?? 0
-                    )}{' '}
-                studied
+                <span dir="ltr">
+                  {formatGoalValue(
+                    dailyGoals[0] || { displayFormat: 'hours-mins' },
+                    dailyGoals[0]?.user1 ?? 0
+                  ) === '—'
+                    ? '0m'
+                    : formatGoalValue(
+                        dailyGoals[0] || { displayFormat: 'hours-mins' },
+                        dailyGoals[0]?.user1 ?? 0
+                      )}
+                </span>{' '}
+                {t.studied}
               </div>
             </div>
 
@@ -806,16 +825,18 @@ export function InsightsView({ state, metrics }) {
                 <RollingNumber value={`${u2Percent}%`} />
               </div>
               <div className="text-[11.5px] font-medium text-[#748680] mt-1">
-                {formatGoalValue(
-                  dailyGoals[0] || { displayFormat: 'hours-mins' },
-                  dailyGoals[0]?.user2 ?? 0
-                ) === '—'
-                  ? '0m'
-                  : formatGoalValue(
-                      dailyGoals[0] || { displayFormat: 'hours-mins' },
-                      dailyGoals[0]?.user2 ?? 0
-                    )}{' '}
-                studied
+                <span dir="ltr">
+                  {formatGoalValue(
+                    dailyGoals[0] || { displayFormat: 'hours-mins' },
+                    dailyGoals[0]?.user2 ?? 0
+                  ) === '—'
+                    ? '0m'
+                    : formatGoalValue(
+                        dailyGoals[0] || { displayFormat: 'hours-mins' },
+                        dailyGoals[0]?.user2 ?? 0
+                      )}
+                </span>{' '}
+                {t.studied}
               </div>
             </div>
 

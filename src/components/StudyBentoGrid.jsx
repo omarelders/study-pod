@@ -12,7 +12,12 @@ import {
   Check,
   Plus,
 } from 'lucide-react';
-import { formatGoalValue, getFormattedDayLabel } from '../data/studyData.js';
+import { formatGoalValue } from '../data/studyData.js';
+import {
+  getTexts,
+  getGoalTitle,
+  getLocalizedDayHeader,
+} from '../data/i18n.js';
 import { RollingNumber } from './RollingNumber.jsx';
 import { triggerIosHaptic } from './IosPwaInstallModal.jsx';
 
@@ -81,6 +86,8 @@ export function StudyBentoGrid({
   onQuickStep,
   onSwitchActiveLogger,
 }) {
+  const lang = state?.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
   const u1Color = state?.user1?.color || '#00B86B';
   const u2Color = state?.user2?.color || '#00A8E8';
   const u1Soft = hexToRgba(u1Color, 0.15);
@@ -112,7 +119,7 @@ export function StudyBentoGrid({
       <div className="mb-3.5 px-0.5">
         <div className="flex items-center justify-between">
           <div className="text-[10px] font-bold tracking-[0.11em] text-[#6E827B] uppercase">
-            {getFormattedDayLabel(isYesterday)}
+            {getLocalizedDayHeader(isYesterday, lang)}
           </div>
 
           {/* Minimal Native Legend: ● Ced  ● Joe */}
@@ -156,7 +163,9 @@ export function StudyBentoGrid({
                   color: paired ? u2Color : '#94A3B8',
                 }}
               />
-              <span>{paired ? state?.user2?.name || 'Joe' : 'Partner'}</span>
+              <span>
+                {paired ? state?.user2?.name || 'Joe' : t.partnerDefault}
+              </span>
               {state?.user2?.studyingNow && (
                 <span className="text-[10px] animate-pulse" title="Studying now">
                   ⏱
@@ -168,15 +177,18 @@ export function StudyBentoGrid({
 
         <div className="mt-0.5">
           <h2 className="text-[22px] font-bold tracking-[-0.028em] text-[#111B24] leading-tight">
-            {isYesterday ? "Yesterday's Progress" : "Today's Progress"}
+            {isYesterday ? t.yesterdaysProgress : t.todaysProgress}
           </h2>
           <p
             className="text-[12.5px] text-[#6E827B] font-medium mt-0.5"
             data-testid="goals-in-sync-subtitle"
           >
             {paired
-              ? `${metrics?.inSyncCount ?? 2} of ${metrics?.totalDailyGoals ?? 7} goals in sync today`
-              : 'Pair with a study partner to sync goals'}
+              ? t.goalsInSyncToday(
+                  metrics?.inSyncCount ?? 2,
+                  metrics?.totalDailyGoals ?? 7
+                )
+              : t.pairToSyncGoals}
           </p>
         </div>
       </div>
@@ -186,7 +198,7 @@ export function StudyBentoGrid({
         {dailyGoals.map((goal, cardIdx) => {
           const u1Val = getEffectiveVal(goal, 'user1');
           const u2Val = getEffectiveVal(goal, 'user2');
-          const cardTitle = getDisplayCardTitle(goal);
+          const cardTitle = getGoalTitle(goal, lang, true);
 
           // Full-Width Slanted Bars Card (Deep Study)
           if (goal.visual === 'slanted-bars' || goal.fullWidth) {
@@ -240,7 +252,10 @@ export function StudyBentoGrid({
                 </div>
 
                 {/* 8 Glossy Liquid Slanted Bars Left + Moon Divider + 8 Glossy Slanted Bars Right */}
-                <div className="mt-3.5 flex items-center justify-between gap-2 sm:gap-5 px-1 sm:px-3">
+                <div
+                  dir="ltr"
+                  className="mt-3.5 flex items-center justify-between gap-2 sm:gap-5 px-1 sm:px-3"
+                >
                   {/* Left: User 1 */}
                   <div className="flex-1 flex flex-col items-center">
                     <div className="w-full max-w-[230px] flex items-center justify-center gap-[4.5px] sm:gap-[6px]">
@@ -365,7 +380,10 @@ export function StudyBentoGrid({
               </div>
 
               {/* Card Center Graphic */}
-              <div className="my-1 flex items-center justify-center h-[88px]">
+              <div
+                dir="ltr"
+                className="my-1 flex items-center justify-center h-[88px]"
+              >
                 {isDualRing && (
                   <DualRingGraphic
                     u1Ratio={Math.min(1, u1Val / (goal.target || 10000))}
@@ -434,7 +452,10 @@ export function StudyBentoGrid({
               </div>
 
               {/* Card Bottom Values */}
-              <div className="flex items-baseline justify-between px-0.5 tabular-nums">
+              <div
+                dir="ltr"
+                className="flex items-baseline justify-between px-0.5 tabular-nums"
+              >
                 <span
                   data-testid={`goal-${goal.id}-u1`}
                   className={
@@ -487,10 +508,10 @@ export function StudyBentoGrid({
         <div className="mt-5">
           <div className="flex items-center justify-between px-0.5 mb-2.5">
             <h3 className="text-[18px] font-bold tracking-[-0.025em] text-[#111B24]">
-              Beyond Today
+              {t.beyondToday}
             </h3>
             <span className="text-[11px] font-semibold text-[#6E827B]">
-              Cumulative milestones
+              {t.cumulativeMilestones}
             </span>
           </div>
 
@@ -512,12 +533,15 @@ export function StudyBentoGrid({
                   <div className="flex items-center gap-1.5 min-w-0">
                     <GoalHeaderIcon iconName={goal.icon} />
                     <span className="text-[13px] font-bold text-[#1B2724] truncate">
-                      {goal.title}
+                      {getGoalTitle(goal, lang, false)}
                     </span>
                   </div>
 
                   {/* Dual Liquid Glass Pillar Comparison */}
-                  <div className="my-2 flex items-end justify-center gap-5 h-[52px] px-2">
+                  <div
+                    dir="ltr"
+                    className="my-2 flex items-end justify-center gap-5 h-[52px] px-2"
+                  >
                     <div className="flex flex-col items-center gap-1 w-9">
                       <div
                         className="w-full h-[44px] rounded-[10px] overflow-hidden flex items-end p-0.5 liquid-glass-slot"
@@ -551,7 +575,10 @@ export function StudyBentoGrid({
                     </div>
                   </div>
 
-                  <div className="flex items-baseline justify-between px-0.5 tabular-nums">
+                  <div
+                    dir="ltr"
+                    className="flex items-baseline justify-between px-0.5 tabular-nums"
+                  >
                     <span
                       className="text-[14.5px] font-extrabold tracking-[-0.02em]"
                       style={{ color: u1Color }}

@@ -6,6 +6,11 @@ import {
   formatGoalValue,
   PRESET_STUDY_GOALS,
 } from './src/data/studyData.js';
+import {
+  getTexts,
+  getGoalTitle,
+  getWeekdayLabel,
+} from './src/data/i18n.js';
 import { createAppServer } from './server.js';
 
 // 1. Verify default state & pod metrics calculation
@@ -38,6 +43,18 @@ assert.ok(fs.existsSync('./public/icon-192.png'));
 assert.ok(fs.existsSync('./public/icon-512.png'));
 assert.ok(fs.existsSync('./public/sw.js'));
 assert.ok(fs.existsSync('./src/components/IosPwaInstallModal.jsx'));
+
+// 2c. Verify Bilingual Arabic (ar) & English (en) Localization + RTL Safeguards
+const enTexts = getTexts('en');
+const arTexts = getTexts('ar');
+assert.equal(enTexts.together, 'Together');
+assert.equal(arTexts.together, 'معاً');
+assert.equal(getGoalTitle(studyHoursGoal, 'ar', false), 'دراسة عميقة');
+assert.equal(getGoalTitle(flashcardsGoal, 'ar', true), 'البطاقات');
+assert.equal(getWeekdayLabel('M', 0, 'ar'), 'ن');
+const indexCss = fs.readFileSync('./src/index.css', 'utf8');
+assert.ok(indexCss.includes('[dir="rtl"] *:not(.font-mono)'));
+assert.ok(indexCss.includes('inset-inline-start: 52px'));
 
 // 3. Verify SQLite API endpoints in-memory
 const server = createAppServer(':memory:');

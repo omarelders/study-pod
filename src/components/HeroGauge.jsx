@@ -1,6 +1,7 @@
 import React from 'react';
 import RollingNumber from './RollingNumber.jsx';
 import { triggerIosHaptic } from './IosPwaInstallModal.jsx';
+import { getTexts } from '../data/i18n.js';
 
 function hexToRgba(hex, alpha = 0.16) {
   if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
@@ -41,6 +42,9 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
   const cx = 160;
   const cy = 118;
 
+  const lang = state?.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
+
   const u1Color = state?.user1?.color || '#00B86B';
   const u2Color = state?.user2?.color || '#00A8E8';
 
@@ -77,12 +81,15 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
         }}
       />
 
-      <div className="relative w-full max-w-[320px] h-[195px] flex items-center justify-center">
+      <div
+        dir="ltr"
+        className="relative w-full max-w-[320px] h-[195px] flex items-center justify-center"
+      >
         <svg
           viewBox="0 0 320 195"
           className="w-full h-full overflow-visible"
           role="img"
-          aria-label={`Goals reached today: ${displayPercent} percent`}
+          aria-label={`${t.goalsReachedToday}: ${displayPercent}%`}
         >
           <defs>
             <path id="goalsArc" d={goalsArcPath} />
@@ -98,14 +105,14 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
           <text
             fill="#637871"
             style={{
-              fontSize: '9.5px',
+              fontSize: lang === 'ar' ? '10.5px' : '9.5px',
               fontWeight: 700,
-              letterSpacing: '0.14em',
+              letterSpacing: lang === 'ar' ? '0px' : '0.14em',
             }}
             className="uppercase"
           >
             <textPath href="#goalsArc" startOffset="50%" textAnchor="middle">
-              GOALS REACHED TODAY
+              {t.goalsReachedToday}
             </textPath>
           </text>
 
@@ -196,7 +203,7 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
               <RollingNumber value={displayPercent} staggerMs={55} />
             </span>
             <span className="text-[12.5px] font-extrabold tracking-[0.14em] text-[#141E28] mt-1.5 uppercase">
-              PERCENT
+              {t.percent}
             </span>
 
             {/* Unpaired "Pair up to start" Liquid Glass CTA overlay */}
@@ -206,7 +213,7 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
                 onClick={() => onOpenPairing && onOpenPairing()}
                 className="pointer-events-auto absolute top-1/2 -translate-y-1/2 whitespace-nowrap liquid-glass-emerald-orb text-white text-[13px] font-bold px-5 py-2.5 rounded-full ios-press cursor-pointer"
               >
-                Pair up to start
+                {t.pairUpToStart}
               </button>
             )}
           </div>
@@ -227,7 +234,9 @@ export function HeroGauge({ state, metrics, onToggleYesterday, onOpenPairing }) 
               className="text-[#BD8218] font-extrabold"
             />
             <span className="text-[#263330]">
-              {state?.selectedDayView === 'yesterday' ? 'VIEWING YESTERDAY' : 'YESTERDAY'}
+              {state?.selectedDayView === 'yesterday'
+                ? t.viewingYesterday
+                : t.yesterday}
             </span>
             <svg
               viewBox="0 0 12 12"

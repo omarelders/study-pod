@@ -16,8 +16,14 @@ import {
   RefreshCw,
   QrCode,
   Smartphone,
+  Globe,
 } from 'lucide-react';
 import { RING_COLORS } from '../data/studyData.js';
+import {
+  getTexts,
+  getGoalTitle,
+  getGoalSubtitle,
+} from '../data/i18n.js';
 import {
   useIosSheetDrag,
   isRunningStandalone,
@@ -87,6 +93,10 @@ export function PodPairingModal({
 
   if (!isOpen) return null;
 
+  const lang = state?.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
+  const rtlSign = lang === 'ar' ? -1 : 1;
+
   const podCode = state?.podCode || 'ZAU8PP';
   const u1Name = state?.user1?.name || 'Ced';
   const u2Name = state?.user2?.name || 'Joe';
@@ -148,13 +158,13 @@ export function PodPairingModal({
           <div className="w-9 h-[5px] rounded-full bg-black/18 mx-auto" />
         </div>
 
-        {/* Sub-view Switcher Pills with Physical Sliding Indicator */}
+        {/* Sub-view Switcher Pills with Physical Sliding Indicator (RTL-aware start-1) */}
         <div className="relative grid grid-cols-3 bg-[#E3EBE7] p-1 rounded-full max-w-[330px] mx-auto mb-3.5 overflow-hidden">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc((100%-8px)/3)] rounded-full bg-[#009E5C] shadow-[0_2px_8px_rgba(0,158,92,0.3)]"
+            className="pointer-events-none absolute top-1 bottom-1 start-1 w-[calc((100%-8px)/3)] rounded-full bg-[#009E5C] shadow-[0_2px_8px_rgba(0,158,92,0.3)]"
             style={{
-              transform: `translate3d(${(view === 'code' ? 0 : view === 'enter' ? 1 : 2) * 100}%, 0, 0)`,
+              transform: `translate3d(${rtlSign * (view === 'code' ? 0 : view === 'enter' ? 1 : 2) * 100}%, 0, 0)`,
               transition: 'transform 380ms cubic-bezier(0.32, 0.72, 0, 1)',
             }}
           />
@@ -165,7 +175,7 @@ export function PodPairingModal({
               view === 'code' ? 'text-white' : 'text-[#5B7068]'
             }`}
           >
-            Your Pod Code
+            {t.yourPodCodeTab}
           </button>
           <button
             type="button"
@@ -174,7 +184,7 @@ export function PodPairingModal({
               view === 'enter' ? 'text-white' : 'text-[#5B7068]'
             }`}
           >
-            Enter Code
+            {t.enterCodeTab}
           </button>
           <button
             type="button"
@@ -183,7 +193,7 @@ export function PodPairingModal({
               view === 'invite' ? 'text-white' : 'text-[#5B7068]'
             }`}
           >
-            Invite Sheet
+            {t.inviteSheetTab}
           </button>
         </div>
 
@@ -196,7 +206,7 @@ export function PodPairingModal({
             type="button"
             onClick={onClose}
             aria-label="Close Pairing Modal"
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/[0.06] hover:bg-black/[0.1] text-[#334740] flex items-center justify-center transition cursor-pointer"
+            className="absolute top-4 end-4 w-8 h-8 rounded-full bg-black/[0.06] hover:bg-black/[0.1] text-[#334740] flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -205,22 +215,25 @@ export function PodPairingModal({
           {view === 'code' && (
             <div className="text-center pt-1">
               <h3 className="text-[22px] font-extrabold text-[#16202A] tracking-[-0.03em]">
-                Your Pod Code
+                {t.yourPodCodeTab}
               </h3>
               <p className="text-[13px] font-medium text-[#697D75] mt-1 tracking-[-0.01em]">
-                Share this code with your study partner to pair your pods
+                {t.shareThisCodeDesc}
               </p>
 
               {/* Tracked Bold Code Box */}
               <div className="my-5 bg-white rounded-[22px] py-5 px-4 border border-black/[0.06] shadow-[0_2px_12px_rgba(15,28,24,0.04)]">
-                <div className="text-[36px] font-black tracking-[0.22em] text-[#16202A] font-mono select-all pl-2 tabular-nums">
+                <div
+                  dir="ltr"
+                  className="text-[36px] font-black tracking-[0.22em] text-[#16202A] font-mono select-all pl-2 tabular-nums"
+                >
                   {podCode}
                 </div>
                 <div className="mt-2 flex items-center justify-center gap-2.5">
                   <span className="text-[11.5px] font-bold text-[#009E5C]">
                     {state?.paired
-                      ? `Paired with ${u2Name}`
-                      : 'Waiting for partner'}
+                      ? t.pairedWith(u2Name)
+                      : t.waitingForPartner}
                   </span>
                   <button
                     type="button"
@@ -228,7 +241,7 @@ export function PodPairingModal({
                     className="text-[11.5px] font-bold text-[#6E827A] hover:text-[#16202A] inline-flex items-center gap-1 underline cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    New code
+                    {t.newCode}
                   </button>
                 </div>
               </div>
@@ -242,12 +255,12 @@ export function PodPairingModal({
                 {copied ? (
                   <>
                     <Check className="w-4 h-4 stroke-[2.8]" />
-                    <span>Copied! ({podCode})</span>
+                    <span>{t.copiedCode(podCode)}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-4 h-4 stroke-[2.4]" />
-                    <span>Share Code</span>
+                    <span>{t.shareCode}</span>
                   </>
                 )}
               </button>
@@ -259,14 +272,14 @@ export function PodPairingModal({
                   onClick={onClose}
                   className="text-[14px] font-bold text-[#4A5D55] hover:text-[#16202A] transition cursor-pointer"
                 >
-                  Done
+                  {t.done}
                 </button>
                 <button
                   type="button"
                   onClick={() => setView('enter')}
                   className="text-[12.5px] font-bold text-[#009E5C] hover:underline cursor-pointer"
                 >
-                  Have a partner&apos;s code? Enter invite code
+                  {t.havePartnerCodeLink}
                 </button>
               </div>
             </div>
@@ -276,14 +289,15 @@ export function PodPairingModal({
           {view === 'enter' && (
             <form onSubmit={handleJoinSubmit} className="text-center pt-1">
               <h3 className="text-[22px] font-extrabold text-[#16202A] tracking-[-0.03em]">
-                Enter Invite Code
+                {t.enterInviteCodeTitle}
               </h3>
               <p className="text-[13px] font-medium text-[#697D75] mt-1">
-                Enter your study partner&apos;s 6-character pod code
+                {t.enterInviteCodeDesc}
               </p>
 
               <div className="my-5">
                 <input
+                  dir="ltr"
                   type="text"
                   maxLength={6}
                   value={inviteCodeInput}
@@ -302,13 +316,13 @@ export function PodPairingModal({
                   onClick={() => setView('code')}
                   className="py-3 rounded-full bg-[#E3EBE7] hover:bg-[#D5E2DC] text-[#354841] font-extrabold text-[14px] transition cursor-pointer"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="py-3 rounded-full bg-[#009E5C] hover:bg-[#008A50] text-white font-extrabold text-[14px] shadow-[0_6px_18px_rgba(0,158,92,0.28)] transition cursor-pointer"
                 >
-                  Join
+                  {t.join}
                 </button>
               </div>
             </form>
@@ -318,7 +332,10 @@ export function PodPairingModal({
           {view === 'invite' && (
             <div className="text-center pt-1">
               {/* Overlapping Partner Avatars */}
-              <div className="flex items-center justify-center -space-x-3 mb-3.5">
+              <div
+                dir="ltr"
+                className="flex items-center justify-center -space-x-3 mb-3.5"
+              >
                 <div
                   className="w-14 h-14 rounded-full border-4 border-[#F7F9F8] flex items-center justify-center text-white text-[20px] font-extrabold shadow-sm"
                   style={{ backgroundColor: u1Color }}
@@ -334,10 +351,10 @@ export function PodPairingModal({
               </div>
 
               <h3 className="text-[23px] font-extrabold text-[#16202A] tracking-[-0.03em]">
-                {u2Name} invited you!
+                {t.invitedYou(u2Name)}
               </h3>
               <p className="text-[13px] font-medium text-[#5E726A] mt-1 max-w-[260px] mx-auto">
-                Join their pod and start tracking goals together.
+                {t.joinPodAndTrackDesc}
               </p>
 
               {/* Green Speckled Accept Invite Pill Button */}
@@ -354,7 +371,7 @@ export function PodPairingModal({
                 }}
                 className="mt-5 w-full py-3.5 px-5 rounded-full text-white font-extrabold text-[15px] shadow-[0_10px_24px_rgba(0,158,92,0.32)] active:scale-[0.99] transition cursor-pointer"
               >
-                Accept Invite
+                {t.acceptInvite}
               </button>
 
               <button
@@ -362,7 +379,7 @@ export function PodPairingModal({
                 onClick={onClose}
                 className="mt-2.5 w-full py-2.5 rounded-full text-[13.5px] font-bold text-[#6E827A] hover:text-[#16202A] transition cursor-pointer"
               >
-                Not Now
+                {t.notNow}
               </button>
             </div>
           )}
@@ -417,6 +434,7 @@ export function SettingsAndOnboardingView({
   backendStatus,
   onRefreshBackendStatus,
   onUpdateState,
+  onToggleLanguage,
   onResetDemo,
   onResetCleanZero,
   onStartFreshOnboarding,
@@ -432,6 +450,10 @@ export function SettingsAndOnboardingView({
   const [customUnit, setCustomUnit] = useState('min');
   const [customTarget, setCustomTarget] = useState(45);
   const [customVisual, setCustomVisual] = useState('slanted-bars');
+
+  const lang = state?.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
+  const rtlSign = lang === 'ar' ? -1 : 1;
 
   useEffect(() => {
     if (mode === 'onboarding') {
@@ -632,7 +654,7 @@ export function SettingsAndOnboardingView({
                     key={goal.id}
                     type="button"
                     onClick={() => handleToggleGoalEnabled(goal.id)}
-                    className={`w-full text-left px-4 py-3 rounded-[20px] border backdrop-blur-xl flex items-center justify-between gap-2 transition cursor-pointer ${
+                    className={`w-full text-start px-4 py-3 rounded-[20px] border backdrop-blur-xl flex items-center justify-between gap-2 transition cursor-pointer ${
                       goal.enabled
                         ? 'bg-white/95 border-[#009E5C] shadow-2xs'
                         : 'bg-white/55 border-white/80 opacity-70'
@@ -640,10 +662,10 @@ export function SettingsAndOnboardingView({
                   >
                     <div>
                       <div className="text-[14px] font-bold text-[#16202A] tracking-[-0.02em]">
-                        {goal.title}
+                        {getGoalTitle(goal, lang, false)}
                       </div>
                       <div className="text-[11.5px] font-medium text-[#6E827A]">
-                        {goal.subtitle}
+                        {getGoalSubtitle(goal, lang)}
                       </div>
                     </div>
                     <div
@@ -673,7 +695,7 @@ export function SettingsAndOnboardingView({
                     key={goal.id}
                     type="button"
                     onClick={() => handleToggleGoalEnabled(goal.id)}
-                    className={`w-full text-left px-4 py-3 rounded-[20px] border backdrop-blur-xl flex items-center justify-between gap-2 transition cursor-pointer ${
+                    className={`w-full text-start px-4 py-3 rounded-[20px] border backdrop-blur-xl flex items-center justify-between gap-2 transition cursor-pointer ${
                       goal.enabled
                         ? 'bg-white/95 border-[#009E5C] shadow-2xs'
                         : 'bg-white/55 border-white/80 opacity-70'
@@ -681,10 +703,10 @@ export function SettingsAndOnboardingView({
                   >
                     <div>
                       <div className="text-[14px] font-bold text-[#16202A] tracking-[-0.02em]">
-                        {goal.title}
+                        {getGoalTitle(goal, lang, false)}
                       </div>
                       <div className="text-[11.5px] font-medium text-[#6E827A]">
-                        {goal.subtitle}
+                        {getGoalSubtitle(goal, lang)}
                       </div>
                     </div>
                     <div
@@ -856,10 +878,10 @@ export function SettingsAndOnboardingView({
       {/* iOS Large Title Header */}
       <div className="px-1">
         <h1 className="text-[28px] font-extrabold text-[#16202A] tracking-[-0.03em] leading-tight">
-          You &amp; Pod Settings
+          {t.youAndPodSettings}
         </h1>
         <p className="text-[13px] font-medium text-[#6E827A] mt-0.5">
-          Manage your study pod, rings, and gentle check-in preferences
+          {t.settingsSubtitle}
         </p>
       </div>
 
@@ -869,7 +891,7 @@ export function SettingsAndOnboardingView({
         className={`${IOS_GROUP_CARD} p-4 ios-stagger-card`}
       >
         <div className="flex items-center gap-3.5 pb-3.5">
-          <div className="flex items-center -space-x-2.5 shrink-0">
+          <div dir="ltr" className="flex items-center -space-x-2.5 shrink-0">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center text-white text-[22px] font-extrabold shadow-xs ring-2 ring-white"
               style={{ backgroundColor: u1.color || '#00B86B' }}
@@ -890,7 +912,7 @@ export function SettingsAndOnboardingView({
             </div>
             <div className="text-[12.5px] font-medium text-[#6E827A] truncate">
               {state?.relationship || 'My Study Partner'} · Pod{' '}
-              <span className="font-mono font-bold text-[#009E5C]">
+              <span dir="ltr" className="font-mono font-bold text-[#009E5C]">
                 {state?.podCode || 'ZAU8PP'}
               </span>
             </div>
@@ -900,7 +922,7 @@ export function SettingsAndOnboardingView({
         <div className="grid grid-cols-2 gap-2.5 pt-3.5">
           <div>
             <label className="block text-[10px] font-bold tracking-[0.12em] text-[#7A8B85] uppercase mb-1">
-              Your Name
+              {t.yourName}
             </label>
             <input
               type="text"
@@ -916,7 +938,7 @@ export function SettingsAndOnboardingView({
 
           <div>
             <label className="block text-[10px] font-bold tracking-[0.12em] text-[#7A8B85] uppercase mb-1">
-              Partner Name
+              {t.partnerName}
             </label>
             <input
               type="text"
@@ -932,10 +954,76 @@ export function SettingsAndOnboardingView({
         </div>
       </div>
 
-      {/* POD SECTION (00:54 - 00:55) */}
+      {/* LANGUAGE SECTION (English | العربية) */}
       <div style={{ '--stagger': 1 }} className="ios-stagger-card">
         <div className="text-[11px] font-bold tracking-[0.12em] text-[#6E827A] uppercase mb-1.5 px-3">
-          POD PAIRING &amp; SYNC
+          {t.languageSection}
+        </div>
+        <div className={IOS_GROUP_CARD}>
+          <div className="px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-[7px] bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Globe className="w-4 h-4 stroke-[2.2]" aria-hidden="true" />
+              </div>
+              <span className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
+                {t.appLanguage}
+              </span>
+            </div>
+
+            {/* iOS 26 Segmented Language Switcher (English / العربية) */}
+            <div
+              data-testid="settings-lang-segmented"
+              className="relative grid grid-cols-2 bg-black/[0.055] p-1 rounded-full overflow-hidden border border-white/60 min-w-[164px]"
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1 bottom-1 start-1 w-[calc((100%-8px)/2)] rounded-full bg-white/95 shadow-[0_2px_8px_rgba(10,38,30,0.10),inset_0_1px_0.5px_#FFFFFF]"
+                style={{
+                  transform: `translate3d(${rtlSign * (lang === 'ar' ? 100 : 0)}%, 0, 0)`,
+                  transition: 'transform 360ms cubic-bezier(0.32, 0.72, 0, 1)',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  triggerIosHaptic('light');
+                  if (onToggleLanguage) {
+                    onToggleLanguage('en');
+                  } else {
+                    updatePatch({ lang: 'en' });
+                  }
+                }}
+                className={`relative z-10 py-1 px-3 rounded-full text-[12px] font-bold transition-colors duration-200 cursor-pointer ${
+                  lang === 'en' ? 'text-[#141E28]' : 'text-[#5A6E66]'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerIosHaptic('light');
+                  if (onToggleLanguage) {
+                    onToggleLanguage('ar');
+                  } else {
+                    updatePatch({ lang: 'ar' });
+                  }
+                }}
+                className={`relative z-10 py-1 px-3 rounded-full text-[12px] font-bold transition-colors duration-200 cursor-pointer ${
+                  lang === 'ar' ? 'text-[#141E28]' : 'text-[#5A6E66]'
+                }`}
+              >
+                العربية
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* POD SECTION (00:54 - 00:55) */}
+      <div style={{ '--stagger': 2 }} className="ios-stagger-card">
+        <div className="text-[11px] font-bold tracking-[0.12em] text-[#6E827A] uppercase mb-1.5 px-3">
+          {t.podPairingAndSync}
         </div>
         <div className={IOS_GROUP_CARD}>
           {/* Row 1: Pairing Status */}
@@ -946,12 +1034,15 @@ export function SettingsAndOnboardingView({
               </div>
               <span className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
                 {state?.paired
-                  ? `Paired with ${u2.name}`
-                  : 'Solo Mode (Unpaired)'}
+                  ? t.pairedWith(u2.name)
+                  : t.soloModeUnpaired}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[12.5px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#E9F7F0] text-[#009E5C]">
+              <span
+                dir="ltr"
+                className="text-[12.5px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#E9F7F0] text-[#009E5C]"
+              >
                 {state?.podCode || 'ZAU8PP'}
               </span>
             </div>
@@ -989,7 +1080,7 @@ export function SettingsAndOnboardingView({
               }}
               className="px-2.5 py-1 rounded-full bg-[#E9F7F0] hover:bg-[#D5F0E3] text-[#009E5C] text-[11px] font-bold shrink-0 transition ios-press cursor-pointer"
             >
-              {verifyingCloud ? 'Syncing…' : 'Verify Sync'}
+              {verifyingCloud ? t.syncing : t.verifySync}
             </button>
           </div>
 
@@ -997,19 +1088,21 @@ export function SettingsAndOnboardingView({
           <button
             type="button"
             onClick={() => onOpenPairing?.()}
-            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+            className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#0EA5E9] text-white flex items-center justify-center shrink-0 shadow-2xs">
                 <QrCode className="w-4 h-4 stroke-[2.2]" aria-hidden="true" />
               </div>
               <span className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                View Pod Details
+                {t.viewPodDetails}
               </span>
             </div>
             <div className="flex items-center gap-1 text-[#8A9B94]">
-              <span className="text-[13px] font-medium">Share Code</span>
-              <span className="text-[17px] leading-none font-semibold">›</span>
+              <span className="text-[13px] font-medium">{t.shareCode}</span>
+              <span className="text-[17px] leading-none font-semibold">
+                {lang === 'ar' ? '‹' : '›'}
+              </span>
             </div>
           </button>
 
@@ -1017,7 +1110,7 @@ export function SettingsAndOnboardingView({
           <button
             type="button"
             onClick={() => onOpenPwaInstall?.()}
-            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+            className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -1025,59 +1118,63 @@ export function SettingsAndOnboardingView({
               </div>
               <div>
                 <div className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                  iPhone Home Screen App
+                  {t.iphoneHomeScreenApp}
                 </div>
                 <div className="text-[11px] font-medium text-[#6E827A]">
                   {isRunningStandalone()
-                    ? 'Running in full-screen native PWA mode'
-                    : 'Install full-screen Liquid Glass app on iPhone'}
+                    ? t.runningStandaloneDesc
+                    : t.installStandaloneDesc}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-1 text-[#007AFF] shrink-0">
               <span className="text-[12.5px] font-bold">
-                {isRunningStandalone() ? 'Installed' : 'Install'}
+                {isRunningStandalone() ? t.installed : t.install}
               </span>
-              <span className="text-[17px] leading-none font-semibold">›</span>
+              <span className="text-[17px] leading-none font-semibold">
+                {lang === 'ar' ? '‹' : '›'}
+              </span>
             </div>
           </button>
 
-          {/* Row 3: Leave or Re-pair Pod */}
+          {/* Row 5: Leave or Re-pair Pod */}
           {state?.paired ? (
             <button
               type="button"
               onClick={() => updatePatch({ paired: false })}
-              className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-rose-50/50 transition cursor-pointer"
+              className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-rose-50/50 transition cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-[7px] bg-[#EF4444] text-white flex items-center justify-center shrink-0 shadow-2xs">
                   <LogOut className="w-4 h-4 stroke-[2.3]" />
                 </div>
                 <span className="text-[14.5px] font-semibold text-[#E11D48] tracking-[-0.02em]">
-                  Leave Pod
+                  {t.leavePod}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-[#E11D48]/80">
-                <span className="text-[12.5px] font-medium">Unpair ring</span>
-                <span className="text-[17px] leading-none font-semibold">›</span>
+                <span className="text-[12.5px] font-medium">{t.unpairRing}</span>
+                <span className="text-[17px] leading-none font-semibold">
+                  {lang === 'ar' ? '‹' : '›'}
+                </span>
               </div>
             </button>
           ) : (
             <button
               type="button"
               onClick={() => updatePatch({ paired: true })}
-              className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-[#EBF7F0] transition cursor-pointer"
+              className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-[#EBF7F0] transition cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-[7px] bg-[#00B86B] text-white flex items-center justify-center shrink-0 shadow-2xs">
                   <RefreshCw className="w-4 h-4 stroke-[2.3]" />
                 </div>
                 <span className="text-[14.5px] font-semibold text-[#009E5C] tracking-[-0.02em]">
-                  Re-pair with {u2.name}
+                  {t.repairWith(u2.name)}
                 </span>
               </div>
               <span className="text-[17px] leading-none font-semibold text-[#009E5C]">
-                ›
+                {lang === 'ar' ? '‹' : '›'}
               </span>
             </button>
           )}
@@ -1085,9 +1182,9 @@ export function SettingsAndOnboardingView({
       </div>
 
       {/* GOALS & NOTIFICATIONS SECTION */}
-      <div style={{ '--stagger': 2 }} className="ios-stagger-card">
+      <div style={{ '--stagger': 3 }} className="ios-stagger-card">
         <div className="text-[11px] font-bold tracking-[0.12em] text-[#6E827A] uppercase mb-1.5 px-3">
-          GOALS &amp; CHECK-INS
+          {t.goalsAndCheckins}
         </div>
         <div className={IOS_GROUP_CARD}>
           {/* Edit Study Goals Row */}
@@ -1097,7 +1194,7 @@ export function SettingsAndOnboardingView({
               setStep(2);
               setWizardOpen(true);
             }}
-            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+            className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-7 h-7 rounded-[7px] bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -1105,15 +1202,17 @@ export function SettingsAndOnboardingView({
               </div>
               <div className="truncate">
                 <div className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em] truncate">
-                  Edit Study Goals &amp; Custom Goals
+                  {t.editStudyGoals}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-[#8A9B94] shrink-0">
               <span className="text-[13px] font-medium tabular-nums">
-                {goals.filter((g) => g.enabled).length} active
+                {t.activeCount(goals.filter((g) => g.enabled).length)}
               </span>
-              <span className="text-[17px] leading-none font-semibold">›</span>
+              <span className="text-[17px] leading-none font-semibold">
+                {lang === 'ar' ? '‹' : '›'}
+              </span>
             </div>
           </button>
 
@@ -1128,10 +1227,10 @@ export function SettingsAndOnboardingView({
               </div>
               <div>
                 <div className="text-[14.5px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                  Gentle Reminders
+                  {t.gentleReminders}
                 </div>
                 <div className="text-[11.5px] font-medium text-[#7A8B85]">
-                  Warm nudges when {u2.name} studies
+                  {t.warmNudgesWhen(u2.name)}
                 </div>
               </div>
             </div>
@@ -1150,6 +1249,7 @@ export function SettingsAndOnboardingView({
               />
             ) : (
               <span
+                dir="ltr"
                 className={`relative w-[51px] h-[31px] rounded-full p-[2px] transition-colors duration-300 flex items-center ios-press ${
                   gentleReminders ? 'bg-[#34C759]' : 'bg-[#E5E5EA]'
                 }`}
@@ -1180,9 +1280,9 @@ export function SettingsAndOnboardingView({
       </div>
 
       {/* APPEARANCE SECTION (Ring Color Picker) */}
-      <div style={{ '--stagger': 3 }} className="ios-stagger-card">
+      <div style={{ '--stagger': 4 }} className="ios-stagger-card">
         <div className="text-[11px] font-bold tracking-[0.12em] text-[#6E827A] uppercase mb-1.5 px-3">
-          APPEARANCE · RING COLOR
+          {t.appearanceRingColor}
         </div>
         <div className={IOS_GROUP_CARD}>
           {/* User 1 Ring Color */}
@@ -1192,7 +1292,7 @@ export function SettingsAndOnboardingView({
                 <Palette className="w-4 h-4 stroke-[2.2]" />
               </div>
               <span className="text-[14px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                {u1.name}&apos;s Ring
+                {t.usersRing(u1.name)}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1227,7 +1327,7 @@ export function SettingsAndOnboardingView({
                 <Sparkles className="w-4 h-4 stroke-[2.2]" />
               </div>
               <span className="text-[14px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                {u2.name}&apos;s Ring
+                {t.usersRing(u2.name)}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1258,15 +1358,15 @@ export function SettingsAndOnboardingView({
       </div>
 
       {/* DEMO & RESET SECTION */}
-      <div style={{ '--stagger': 4 }} className="ios-stagger-card">
+      <div style={{ '--stagger': 5 }} className="ios-stagger-card">
         <div className="text-[11px] font-bold tracking-[0.12em] text-[#6E827A] uppercase mb-1.5 px-3">
-          DATA &amp; RESET
+          {t.dataAndReset}
         </div>
         <div className={IOS_GROUP_CARD}>
           <button
             type="button"
             onClick={() => onResetCleanZero?.()}
-            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+            className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#009E5C] text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -1274,33 +1374,33 @@ export function SettingsAndOnboardingView({
               </div>
               <div>
                 <div className="text-[14px] font-semibold text-[#008C52] tracking-[-0.02em]">
-                  Reset All Progress to 0 (Real Tracking)
+                  {t.resetZeroTitle}
                 </div>
                 <div className="text-[11px] font-medium text-[#7A8B85]">
-                  Clears demo data and starts fresh for today
+                  {t.resetZeroDesc}
                 </div>
               </div>
             </div>
             <span className="text-[17px] leading-none font-semibold text-[#8A9B94]">
-              ›
+              {lang === 'ar' ? '‹' : '›'}
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => onResetDemo?.()}
-            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+            className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#0EA5E9] text-white flex items-center justify-center shrink-0 shadow-2xs">
                 <RotateCcw className="w-4 h-4 stroke-[2.3]" />
               </div>
               <span className="text-[14px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                Load 43% Video Demo Snapshot
+                {t.loadDemoTitle}
               </span>
             </div>
             <span className="text-[17px] leading-none font-semibold text-[#8A9B94]">
-              ›
+              {lang === 'ar' ? '‹' : '›'}
             </span>
           </button>
 
@@ -1311,18 +1411,18 @@ export function SettingsAndOnboardingView({
               setWizardOpen(true);
               onStartFreshOnboarding?.();
             }}
-            className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
+            className="w-full px-4 py-3 text-start flex items-center justify-between hover:bg-black/[0.02] active:bg-black/[0.04] transition cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-[7px] bg-[#F59E0B] text-white flex items-center justify-center shrink-0 shadow-2xs">
                 <Sparkles className="w-4 h-4 stroke-[2.3]" />
               </div>
               <span className="text-[14px] font-semibold text-[#16202A] tracking-[-0.02em]">
-                Start Fresh / Launch Onboarding Wizard
+                {t.startFreshTitle}
               </span>
             </div>
             <span className="text-[17px] leading-none font-semibold text-[#8A9B94]">
-              ›
+              {lang === 'ar' ? '‹' : '›'}
             </span>
           </button>
         </div>

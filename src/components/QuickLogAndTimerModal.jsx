@@ -20,6 +20,11 @@ import {
   Layers,
 } from 'lucide-react';
 import { formatGoalValue } from '../data/studyData.js';
+import {
+  getTexts,
+  getGoalTitle,
+  getGoalUnit,
+} from '../data/i18n.js';
 import { RollingNumber } from './RollingNumber.jsx';
 import { useIosSheetDrag, triggerIosHaptic } from './IosPwaInstallModal.jsx';
 
@@ -114,6 +119,34 @@ export function QuickLogAndTimerModal({
 
   if (!isOpen) return null;
 
+  const lang = state?.lang === 'ar' ? 'ar' : 'en';
+  const t = getTexts(lang);
+  const rtlSign = lang === 'ar' ? -1 : 1;
+
+  const timerPresets = [
+    {
+      id: '25m',
+      label: t.preset25,
+      seconds: 25 * 60,
+      minutes: 25,
+      subject: t.subjectDeepStudy,
+    },
+    {
+      id: '50m',
+      label: t.preset50,
+      seconds: 50 * 60,
+      minutes: 50,
+      subject: t.subjectDeepStudy,
+    },
+    {
+      id: '15m',
+      label: t.preset15,
+      seconds: 15 * 60,
+      minutes: 15,
+      subject: t.subjectRecall,
+    },
+  ];
+
   const activeLogger = state?.activeLogger === 'user2' ? 'user2' : 'user1';
   const u1 = state?.user1 || {
     name: 'Omar',
@@ -132,14 +165,16 @@ export function QuickLogAndTimerModal({
     activeUser.color || (activeLogger === 'user2' ? '#00A8E8' : '#00B86B');
 
   const u1Label =
-    u1.name && u1.name.toLowerCase() !== 'you' ? `${u1.name} (You)` : 'You';
+    u1.name && u1.name.toLowerCase() !== 'you'
+      ? `${u1.name} (${t.youSuffix})`
+      : t.youSuffix;
   const u2Label =
     u2.name && u2.name.toLowerCase() !== 'partner'
-      ? `${u2.name} (Partner)`
-      : 'Partner';
+      ? `${u2.name} (${t.partnerSuffix})`
+      : t.partnerSuffix;
 
   const selectedPreset =
-    TIMER_PRESETS.find((p) => p.id === selectedPresetId) || TIMER_PRESETS[0];
+    timerPresets.find((p) => p.id === selectedPresetId) || timerPresets[0];
 
   const isRunning = Boolean(activeUser.studyingNow);
   const displaySeconds = isRunning
@@ -220,7 +255,7 @@ export function QuickLogAndTimerModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-[20px] font-extrabold text-[#141E28] tracking-[-0.03em] leading-tight">
-                  Study Log &amp; Focus Timer
+                  {t.studyLogAndTimer}
                 </h2>
                 <span
                   className="px-2 py-0.5 rounded-full text-[10.5px] font-extrabold tracking-[-0.01em] font-sf-rounded"
@@ -229,11 +264,11 @@ export function QuickLogAndTimerModal({
                     color: activeColor,
                   }}
                 >
-                  {completedCount}/{enabledGoals.length} done
+                  {t.doneBadge(completedCount, enabledGoals.length)}
                 </span>
               </div>
               <p className="text-[12px] font-medium text-[#60756D] tracking-[-0.01em] mt-0.5">
-                Tap <span className="font-bold text-[#141E28]">+</span> for instant step or tap any habit to scrub
+                {t.quickLogSubtitle}
               </p>
             </div>
 
@@ -250,13 +285,13 @@ export function QuickLogAndTimerModal({
             </button>
           </div>
 
-          {/* Native iOS 26 UISegmentedControl: Active Logger Switcher */}
+          {/* Native iOS 26 UISegmentedControl: Active Logger Switcher (RTL-aware start-1) */}
           <div className="mt-3 relative grid grid-cols-2 bg-black/[0.055] p-1 rounded-full overflow-hidden border border-white/60 shadow-[inset_0_1px_2px_rgba(12,38,30,0.06)]">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc((100%-8px)/2)] rounded-full bg-white/95 shadow-[0_3px_10px_rgba(10,38,30,0.10),inset_0_1px_0.5px_#FFFFFF]"
+              className="pointer-events-none absolute top-1 bottom-1 start-1 w-[calc((100%-8px)/2)] rounded-full bg-white/95 shadow-[0_3px_10px_rgba(10,38,30,0.10),inset_0_1px_0.5px_#FFFFFF]"
               style={{
-                transform: `translate3d(${activeLogger === 'user2' ? 100 : 0}%, 0, 0)`,
+                transform: `translate3d(${rtlSign * (activeLogger === 'user2' ? 100 : 0)}%, 0, 0)`,
                 transition: 'transform 380ms cubic-bezier(0.32, 0.72, 0, 1)',
               }}
             />
@@ -373,12 +408,12 @@ export function QuickLogAndTimerModal({
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-extrabold tracking-[0.11em] uppercase text-[#5E726A]">
-                      FOCUS TIMER
+                      {t.focusTimer}
                     </span>
                     {isRunning && (
                       <span className="px-1.5 py-0.2 rounded-full bg-[#00B86B]/15 text-[#008A50] text-[9.5px] font-extrabold flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#00B86B] animate-ping" />
-                        LIVE
+                        {t.liveBadge}
                       </span>
                     )}
                   </div>
@@ -403,7 +438,7 @@ export function QuickLogAndTimerModal({
                   className="liquid-glass-pill px-2.5 py-2 rounded-full text-[11.5px] font-extrabold text-[#008A50] flex items-center gap-1 ios-press cursor-pointer"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.4]" aria-hidden="true" />
-                  <span>+{selectedPreset.minutes || 25}m</span>
+                  <span dir="ltr">+{selectedPreset.minutes || 25}m</span>
                 </button>
 
                 <button
@@ -427,34 +462,36 @@ export function QuickLogAndTimerModal({
                   {isRunning ? (
                     <>
                       <Pause className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-                      <span>Pause</span>
+                      <span>{t.pause}</span>
                     </>
                   ) : (
                     <>
                       <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-                      <span>Start</span>
+                      <span>{t.start}</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Compact Segmented Preset Duration Chips */}
+            {/* Compact Segmented Preset Duration Chips (RTL-aware start-1) */}
             <div className="mt-3 relative grid grid-cols-3 bg-black/[0.045] p-1 rounded-full overflow-hidden border border-white/60">
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc((100%-8px)/3)] rounded-full bg-white/95 shadow-[0_2px_8px_rgba(10,38,30,0.08),inset_0_1px_0.5px_#FFFFFF]"
+                className="pointer-events-none absolute top-1 bottom-1 start-1 w-[calc((100%-8px)/3)] rounded-full bg-white/95 shadow-[0_2px_8px_rgba(10,38,30,0.08),inset_0_1px_0.5px_#FFFFFF]"
                 style={{
                   transform: `translate3d(${
+                    rtlSign *
                     Math.max(
                       0,
-                      TIMER_PRESETS.findIndex((p) => p.id === selectedPresetId)
-                    ) * 100
+                      timerPresets.findIndex((p) => p.id === selectedPresetId)
+                    ) *
+                    100
                   }%, 0, 0)`,
                   transition: 'transform 360ms cubic-bezier(0.32, 0.72, 0, 1)',
                 }}
               />
-              {TIMER_PRESETS.map((preset) => {
+              {timerPresets.map((preset) => {
                 const active = selectedPresetId === preset.id;
                 return (
                   <button
@@ -478,10 +515,10 @@ export function QuickLogAndTimerModal({
           <div>
             <div className="flex items-center justify-between px-1 mb-2">
               <span className="text-[10.5px] font-extrabold tracking-[0.12em] text-[#60756D] uppercase">
-                DAILY HABITS · {activeUser.name.toUpperCase()}
+                {t.dailyHabitsFor(activeUser.name)}
               </span>
               <span className="text-[10.5px] font-semibold text-[#6E827A]">
-                Tap row to fine-tune
+                {t.tapRowToFineTune}
               </span>
             </div>
 
@@ -559,9 +596,10 @@ export function QuickLogAndTimerModal({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-1.5">
                             <span className="text-[14px] font-extrabold text-[#141E28] tracking-[-0.02em] truncate">
-                              {goal.title}
+                              {getGoalTitle(goal, lang, false)}
                             </span>
                             <span
+                              dir="ltr"
                               className="text-[11px] font-extrabold font-sf-rounded tabular-nums shrink-0"
                               style={{ color: activeColor }}
                             >
@@ -569,7 +607,10 @@ export function QuickLogAndTimerModal({
                             </span>
                           </div>
 
-                          <div className="text-[12px] font-semibold text-[#5E726A] tabular-nums flex items-center gap-1 mt-0.5">
+                          <div
+                            dir="ltr"
+                            className="text-[12px] font-semibold text-[#5E726A] tabular-nums flex items-center gap-1 mt-0.5 w-fit"
+                          >
                             <span className="font-extrabold text-[#141E28] font-sf-rounded">
                               <RollingNumber
                                 value={formatLoggerValue(goal, currentVal)}
@@ -584,13 +625,14 @@ export function QuickLogAndTimerModal({
 
                       {/* Right: Tactile iOS 26 Stepper Controls (- | Max | +Step) */}
                       <div
+                        dir="ltr"
                         className="flex items-center gap-1.5 shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* Decrement (-) Button */}
                         <button
                           type="button"
-                          aria-label={`Decrease ${goal.title}`}
+                          aria-label={`Decrease ${getGoalTitle(goal, lang, false)}`}
                           onClick={() => {
                             triggerIosHaptic('light');
                             onUpdateGoalValue?.(
@@ -617,13 +659,13 @@ export function QuickLogAndTimerModal({
                               : 'bg-black/[0.045] hover:bg-black/[0.08] text-[#495E56]'
                           }`}
                         >
-                          {isCompleted ? 'Done' : 'Hit Target'}
+                          {isCompleted ? t.done : t.hitTarget}
                         </button>
 
                         {/* Increment (+Step) Orb Pill */}
                         <button
                           type="button"
-                          aria-label={`Increase ${goal.title}`}
+                          aria-label={`Increase ${getGoalTitle(goal, lang, false)}`}
                           onClick={() => {
                             triggerIosHaptic('light');
                             onUpdateGoalValue?.(
@@ -646,6 +688,7 @@ export function QuickLogAndTimerModal({
                     {/* Expandable Precision Scrubber (Shown only on active/focused habit row) */}
                     {isExpanded && (
                       <div
+                        dir="ltr"
                         className="mt-2.5 pt-2.5 border-t border-black/[0.05] flex items-center gap-3 animate-fadeIn"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -655,7 +698,7 @@ export function QuickLogAndTimerModal({
                           max={sliderMax}
                           step={stepVal}
                           value={currentVal}
-                          aria-label={`${goal.title} progress slider`}
+                          aria-label={`${getGoalTitle(goal, lang, false)} progress slider`}
                           onChange={(e) =>
                             onUpdateGoalValue?.(
                               goal.id,
@@ -670,7 +713,7 @@ export function QuickLogAndTimerModal({
                           className="flex-1 rounded-lg cursor-pointer ios-slider"
                         />
                         <span className="text-[10.5px] font-bold text-[#6E827A] tabular-nums shrink-0">
-                          ±{stepVal} {goal.unit}
+                          ±{stepVal} {getGoalUnit(goal, lang)}
                         </span>
                       </div>
                     )}
